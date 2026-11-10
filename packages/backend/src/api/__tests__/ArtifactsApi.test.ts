@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { server } from '../../mock-server';
 import { createBackendApiClient } from '../factory';
 
-describe('PoppyAPI', () => {
+describe('ArtifactsAPI', () => {
   const frontendApi = 'https://clerk.company.example';
-  const identity = { session_id: 'protocol-session', client_id: 'https://agent.example', user_id: 'pseudonym' };
 
   it('gets discovery from the authenticated Backend API artifact without changing the document', async () => {
     const metadata = {
@@ -22,11 +21,11 @@ describe('PoppyAPI', () => {
         return HttpResponse.json({ object: 'artifact', data: metadata });
       }),
     );
-    const { __experimental_poppy: poppy } = createBackendApiClient({
+    const { artifacts } = createBackendApiClient({
       apiUrl: 'https://api.clerk.test',
       secretKey: 'sk_live_example',
     });
-    await expect(poppy.getMetadata()).resolves.toEqual(metadata);
+    await expect(artifacts.__experimental_getPoppyJson()).resolves.toEqual(metadata);
   });
 
   it.each([401, 404, 503])('propagates Backend API artifact status %s', async status => {
@@ -42,25 +41,10 @@ describe('PoppyAPI', () => {
         ),
       ),
     );
-    const { __experimental_poppy: poppy } = createBackendApiClient({
+    const { artifacts } = createBackendApiClient({
       apiUrl: 'https://api.clerk.test',
       secretKey: 'sk_live_example',
     });
-    await expect(poppy.getMetadata()).rejects.toMatchObject({ status });
+    await expect(artifacts.__experimental_getPoppyJson()).rejects.toMatchObject({ status });
   });
-
-  it.each([{ type: 'session' as const, token: 'native-session-jwt' }])(
-    'uses the unified resolver for $type credentials',
-    async credential => {
-      server.use(
-        http.post(frontendApi + '/v1/poppy/browser_sessions/resolve', async ({ request }) => {
-          expect(request.headers.has('authorization')).toBe(false);
-          expect(await request.json()).toEqual({ credential });
-          return HttpResponse.json(identity);
-        }),
-      );
-      const { __experimental_poppy: poppy } = createBackendApiClient({});
-      await expect(poppy.resolveSession(credential, frontendApi)).resolves.toEqual(identity);
-    },
-  );
 });

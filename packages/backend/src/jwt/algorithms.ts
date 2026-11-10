@@ -1,18 +1,28 @@
+const algToHash: Record<string, string> = {
+  RS256: 'SHA-256',
+  RS384: 'SHA-384',
+  RS512: 'SHA-512',
+};
 const RSA_ALGORITHM_NAME = 'RSASSA-PKCS1-v1_5';
 
-const jwksAlgToCryptoAlg: Record<string, RsaHashedImportParams | Algorithm> = {
-  RS256: { name: RSA_ALGORITHM_NAME, hash: { name: 'SHA-256' } },
-  RS384: { name: RSA_ALGORITHM_NAME, hash: { name: 'SHA-384' } },
-  RS512: { name: RSA_ALGORITHM_NAME, hash: { name: 'SHA-512' } },
-  EdDSA: { name: 'Ed25519' },
+const jwksAlgToCryptoAlg: Record<string, string> = {
+  RS256: RSA_ALGORITHM_NAME,
+  RS384: RSA_ALGORITHM_NAME,
+  RS512: RSA_ALGORITHM_NAME,
 };
 
-export const algs = Object.keys(jwksAlgToCryptoAlg);
+export const algs = Object.keys(algToHash);
 
-export function getCryptoAlgorithm(algorithmName: string): RsaHashedImportParams | Algorithm {
-  if (!algs.includes(algorithmName)) {
+export function getCryptoAlgorithm(algorithmName: string): RsaHashedImportParams {
+  const hash = algToHash[algorithmName];
+  const name = jwksAlgToCryptoAlg[algorithmName];
+
+  if (!hash || !name) {
     throw new Error(`Unsupported algorithm ${algorithmName}, expected one of ${algs.join(',')}.`);
   }
 
-  return jwksAlgToCryptoAlg[algorithmName];
+  return {
+    hash: { name: algToHash[algorithmName] },
+    name: jwksAlgToCryptoAlg[algorithmName],
+  };
 }

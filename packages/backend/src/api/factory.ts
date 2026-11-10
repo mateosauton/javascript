@@ -35,8 +35,8 @@ import {
   WaitlistEntryAPI,
   WebhookAPI,
 } from './endpoints';
+import { ArtifactsAPI } from './endpoints/ArtifactsApi';
 import { BillingAPI } from './endpoints/BillingApi';
-import { PoppyAPI } from './endpoints/PoppyApi';
 import { buildRequest } from './request';
 
 export type CreateBackendApiOptions = Parameters<typeof buildRequest>[0] & {
@@ -64,6 +64,7 @@ export function createBackendApiClient(options: CreateBackendApiOptions) {
         skipApiVersionInUrl: true,
       }),
     ),
+    artifacts: new ArtifactsAPI(request),
     betaFeatures: new BetaFeaturesAPI(request),
     blocklistIdentifiers: new BlocklistIdentifierAPI(request),
     /**
@@ -108,7 +109,6 @@ export function createBackendApiClient(options: CreateBackendApiOptions) {
     organizations: new OrganizationAPI(request),
     organizationPermissions: new OrganizationPermissionAPI(request),
     organizationRoles: new OrganizationRoleAPI(request),
-    __experimental_poppy: new PoppyAPI(request, options.userAgent),
     phoneNumbers: new PhoneNumberAPI(request),
     proxyChecks: new ProxyCheckAPI(request),
     redirectUrls: new RedirectUrlAPI(request),

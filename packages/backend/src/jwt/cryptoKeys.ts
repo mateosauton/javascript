@@ -23,7 +23,7 @@ function pemToBuffer(secret: string): Uint8Array<ArrayBuffer> {
 
 export function importKey(
   key: JsonWebKey | string,
-  algorithm: RsaHashedImportParams | Algorithm,
+  algorithm: RsaHashedImportParams,
   keyUsage: 'verify' | 'sign',
 ): Promise<CryptoKey> {
   if (typeof key === 'object') {

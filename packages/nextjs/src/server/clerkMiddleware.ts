@@ -20,7 +20,6 @@ import {
   TokenType,
 } from '@clerk/backend/internal';
 import { clerkFrontendApiProxy, DEFAULT_PROXY_PATH, matchProxyPath } from '@clerk/backend/proxy';
-import { isClerkAPIResponseError } from '@clerk/shared/error';
 import { isProductionFromPublishableKey, parsePublishableKey } from '@clerk/shared/keys';
 import { handleNetlifyCacheInDevInstance } from '@clerk/shared/netlifyCacheHandler';
 import { isMalformedURLError } from '@clerk/shared/pathMatcher';
@@ -216,7 +215,10 @@ export const clerkMiddleware = ((...args: unknown[]): NextMiddleware | NextMiddl
           if (request.method !== 'GET') {
             return new Response(null, { status: 405, headers: { Allow: 'GET' } });
           }
-          const metadata = await resolvedClerkClient.__experimental_poppy.getMetadata();
+          const metadata = (await resolvedClerkClient.artifacts.__experimental_getPoppyJson()) as {
+            organization: { domain: string };
+            auth: { issuer: string; scopes: Record<string, unknown> };
+          };
           if (poppyRequestUrl.origin !== `https://${metadata.organization.domain}`) {
             throw new Error('Poppy discovery must use the configured Company origin.');
           }
@@ -253,29 +255,10 @@ export const clerkMiddleware = ((...args: unknown[]): NextMiddleware | NextMiddl
         }));
       }
 
-      const requestState = await resolvedClerkClient
-        .authenticateRequest(clerkRequest, createAuthenticateRequestOptions(clerkRequest, options))
-        .catch((error: unknown) => {
-          if (
-            !options.__experimental_poppy ||
-            !isClerkAPIResponseError(error) ||
-            error.status !== 403 ||
-            error.errors[0]?.code !== 'insufficient_scope'
-          ) {
-            throw error;
-          }
-          return new NextResponse('Additional authorization is required. Missing scope: poppy:browser-sign-in.', {
-            status: 403,
-            headers: {
-              'WWW-Authenticate': 'Bearer error="insufficient_scope", scope="poppy:browser-sign-in"',
-              'Cache-Control': 'no-store',
-              'Content-Type': 'text/plain; charset=utf-8',
-            },
-          });
-        });
-      if (requestState instanceof NextResponse) {
-        return requestState;
-      }
+      const requestState = await resolvedClerkClient.authenticateRequest(
+        clerkRequest,
+        createAuthenticateRequestOptions(clerkRequest, options),
+      );
 
       return runHandlerWithRequestState({
         clerkRequest,
