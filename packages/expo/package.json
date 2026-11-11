@@ -145,6 +145,7 @@
     "expo-secure-store": "^15.0.8",
     "expo-web-browser": "^15.0.11",
     "react-native": "^0.86.0",
+    "react-native-webview": "^14.0.1",
     "tslib": "catalog:repo"
   },
   "peerDependencies": {
