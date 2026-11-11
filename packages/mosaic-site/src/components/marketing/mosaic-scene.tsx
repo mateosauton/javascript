@@ -1,6 +1,7 @@
 'use client';
 import { useMotionValue, useSpring } from 'motion/react';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   startTrail,
@@ -19,6 +20,9 @@ const MARKS = [
   { label: 'Loop gap', stroke: 32, gap: 8, corner: 4 },
   { label: 'Slit', stroke: 36, gap: 3, corner: 4 },
 ];
+
+const POINTER_EFFECTS = false;
+const subscribeNothing = () => () => {};
 
 const source = `#version 300 es
 precision highp float;
@@ -85,6 +89,18 @@ uniform float u_sheen_glint;
 uniform float u_sheen_base;
 uniform float u_sheen_edge;
 uniform float u_vig_width;
+uniform vec4 u_text_box;
+uniform float u_text_pad;
+uniform float u_underlay;
+uniform float u_vig_dim;
+uniform float u_text_round;
+uniform float u_text_jitter;
+uniform float u_shadow_strength;
+uniform float u_shadow_height;
+uniform float u_shadow_soft;
+uniform float u_vig_cells;
+uniform float u_vig_cut;
+uniform float u_vig_jitter;
 uniform float u_vig_height;
 uniform float u_vig_soft;
 uniform float u_vig_top;
@@ -413,18 +429,22 @@ float brickBoundary(float i, float ring, float count) {
   return i + (hash1(vec2(mod(i, count), ring) + 41.0) - 0.5) * u_brick_var;
 }
 
-void main() {
-  vec2 p = unwarp(logoCenter() + (fragCoord - logoCenter()) / max(u_zoom, 0.05));
+float vignetteAt(vec2 screen) {
+  vec2 fromCenter = (screen - logoCenter()) / (u_logo_size * u_zoom * vec2(max(u_vig_width, 0.01), max(u_vig_height, 0.01)));
+  float vignette = 1.0 - smoothstep(1.0 - clamp(u_vig_soft, 0.0, 1.0), 1.0, length(fromCenter));
+  vignette *= smoothstep(0.0, max(u_vig_top, 1.0), screen.y);
+  vignette *= smoothstep(0.0, max(u_vig_bottom, 1.0), u_resolution.y - screen.y);
+  return vignette;
+}
+
+void tileAt(vec2 p, out vec3 e, out vec2 tileId, out vec2 anchor, out float logoAmount, out vec3 color) {
   vec2 center = logoCenter();
   float radius = 0.5 * u_logo_size;
   vec2 offset = p - center;
   float r = length(offset);
 
-  vec3 color;
-  vec3 e;
-  vec2 tileId;
-  vec2 anchor = p;
-  float logoAmount = 0.0;
+  anchor = p;
+  logoAmount = 0.0;
 
   vec2 cellId;
   vec2 seed;
@@ -523,6 +543,51 @@ void main() {
     color = tileTone(tileId, anchor, u_tile_low, u_tile_high);
   }
 
+}
+
+vec2 toPattern(vec2 screen) {
+  return unwarp(logoCenter() + (screen - logoCenter()) / max(u_zoom, 0.05));
+}
+
+float roundedBox(vec2 point, vec4 box, float radius) {
+  vec2 middle = 0.5 * (box.xy + box.zw);
+  vec2 half_ = 0.5 * (box.zw - box.xy);
+  vec2 q = abs(point - middle) - half_ + radius;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+}
+
+float tileVisibility(vec2 screen, vec2 anchor, vec2 tileId) {
+  vec2 anchorScreen = logoCenter() + (anchor - logoCenter()) * u_zoom;
+  float threshold = clamp(u_vig_cut + (hash1(tileId + 151.0) - 0.5) * u_vig_jitter, 0.0, 1.0);
+  float keep = step(threshold, vignetteAt(anchorScreen));
+  if (u_text_box.z > u_text_box.x) {
+    float clearance = u_text_pad + (hash1(tileId + 167.0) - 0.5) * u_text_jitter;
+    keep *= step(clearance, roundedBox(anchorScreen, u_text_box, u_text_round));
+  }
+  return mix(vignetteAt(screen), keep, u_vig_cells);
+}
+
+float occluderAt(vec2 screen) {
+  vec3 e;
+  vec2 tileId;
+  vec2 anchor;
+  float logoAmount;
+  vec3 color;
+  tileAt(toPattern(screen), e, tileId, anchor, logoAmount, color);
+  float groutHalf = 0.5 * u_grout * (1.0 + (hash1(tileId + 61.0) - 0.5) * u_grout_var);
+  float soft = max(u_shadow_soft, 0.5);
+  return smoothstep(groutHalf - 0.5, groutHalf + soft, e.x) * clamp(tileVisibility(screen, anchor, tileId) * u_cover, 0.0, 1.0);
+}
+
+void main() {
+  vec2 p = toPattern(fragCoord);
+  vec3 color;
+  vec3 e;
+  vec2 tileId;
+  vec2 anchor;
+  float logoAmount;
+  tileAt(p, e, tileId, anchor, logoAmount, color);
+
   float groutHalf = 0.5 * u_grout * (1.0 + (hash1(tileId + 61.0) - 0.5) * u_grout_var);
   float tileMask = smoothstep(groutHalf - 0.5, groutHalf + 0.5, e.x);
 
@@ -611,13 +676,21 @@ void main() {
     color += film * amount + vec3(trailGlint * reveal * u_sheen_glint);
   }
 
-  vec2 fromCenter = (fragCoord - logoCenter()) / (u_logo_size * u_zoom * vec2(max(u_vig_width, 0.01), max(u_vig_height, 0.01)));
-  float vignette = 1.0 - smoothstep(1.0 - clamp(u_vig_soft, 0.0, 1.0), 1.0, length(fromCenter));
-  vignette *= smoothstep(0.0, max(u_vig_top, 1.0), fragCoord.y);
-  vignette *= smoothstep(0.0, max(u_vig_bottom, 1.0), u_resolution.y - fragCoord.y);
+  float vignette = tileVisibility(fragCoord, anchor, tileId);
   float alpha = tileMask * clamp(vignette * u_cover, 0.0, 1.0);
   vec3 faded = mix(u_page_color, color, vignette);
-  outColor = vec4(faded * alpha, alpha);
+  faded = mix(faded, u_page_color, (1.0 - vignetteAt(fragCoord)) * u_vig_dim * u_vig_cells);
+  float under = tileMask * clamp(vignetteAt(fragCoord) * u_cover, 0.0, 1.0) * u_underlay;
+  vec3 back = u_page_color * under;
+  float backAlpha = under;
+  if (u_shadow_strength > 0.0 && alpha < 1.0 && u_view == 0) {
+    vec3 toSun = normalize(vec3(u_light_x * u_resolution.x, -u_light_y, u_light_z) - vec3(fragCoord, 0.0));
+    vec2 reach = toSun.xy / max(toSun.z, 0.05) * u_shadow_height;
+    float shadow = occluderAt(fragCoord + reach) * u_shadow_strength;
+    back *= 1.0 - shadow;
+    backAlpha = shadow + backAlpha * (1.0 - shadow);
+  }
+  outColor = vec4(faded * alpha + back * (1.0 - alpha), alpha + backAlpha * (1.0 - alpha));
 }
 `;
 
@@ -647,6 +720,19 @@ type Settings = {
   backRim: number;
   glowReach: number;
   vigWidth: number;
+  textClear: number;
+  textPad: number;
+  underlay: number;
+  vigDim: number;
+  textRound: number;
+  textJitter: number;
+  shadowStrength: number;
+  dmShadow: number;
+  shadowHeight: number;
+  shadowSoft: number;
+  vigCells: number;
+  vigCut: number;
+  vigJitter: number;
   logoY: number;
   zoom: number;
   cover: number;
@@ -717,13 +803,13 @@ const DEFAULTS: Settings = {
   clayWobble: 0,
   clayScale: 74,
   domeHeight: 3.5,
-  domeReach: 69,
+  domeReach: 41,
   edgeHeight: 0.5,
   edgeWidth: 78,
   dishDepth: 0,
   dishReach: 130,
   rigid: 1,
-  lift: 2,
+  lift: 3.5,
   tint: 0,
   hueSpread: 0.77,
   logoTint: 0,
@@ -732,8 +818,21 @@ const DEFAULTS: Settings = {
   backGlow: 0.02,
   backRim: 0,
   glowReach: 800,
-  vigWidth: 1.74,
-  logoY: -0.01,
+  vigWidth: 0.79,
+  textClear: 1,
+  textPad: 24,
+  underlay: 0,
+  vigDim: 0,
+  textRound: 47,
+  textJitter: 16,
+  shadowStrength: 0.3,
+  dmShadow: 3.8,
+  shadowHeight: 6,
+  shadowSoft: 25,
+  vigCells: 1,
+  vigCut: 0.79,
+  vigJitter: 0.09,
+  logoY: -0.025,
   zoom: 0.75,
   cover: 4,
   sheen: 0.07,
@@ -744,53 +843,53 @@ const DEFAULTS: Settings = {
   sheenGlint: 0,
   sheenBase: 1.5,
   sheenEdge: 3,
-  vigHeight: 1.09,
-  vigSoft: 0.88,
-  vigTop: 190,
-  vigBottom: 900,
+  vigHeight: 0.71,
+  vigSoft: 0.16,
+  vigTop: 0,
+  vigBottom: 0,
   lightX: 0.5,
   follow: 0,
-  lightY: -10,
-  lightZ: 900,
-  diffuse: 1.57,
-  specular: 0.6,
+  lightY: 650,
+  lightZ: 740,
+  diffuse: 3,
+  specular: 0.12,
   specSize: 7,
-  lmShadow: 0.26,
+  lmShadow: 0.24,
   lmDepth: 0.05,
-  fresnel: 0,
-  fresnelPower: 6.1,
-  rim: 0.62,
+  fresnel: 0.42,
+  fresnelPower: 7,
+  rim: 0.29,
   warp: 9.2,
   camera: 2300,
   viewX: 0,
   viewY: 0,
   mark: 1,
-  logoSize: 650,
+  logoSize: 680,
   threshold: 0.42,
   cut: 0.12,
-  cell: 57,
-  jitter: 0.21,
-  row: 36,
+  cell: 115,
+  jitter: 0.44,
+  row: 32,
   rowVar: 0.04,
-  brick: 128,
-  brickVar: 0.31,
+  brick: 187,
+  brickVar: 0,
   breakOut: 85,
-  breakFreq: 2.3,
+  breakFreq: 2.6,
   breakVar: 1,
-  hug: 16,
-  hugLen: 72,
-  hugJitter: 0,
+  hug: 22,
+  hugLen: 120,
+  hugJitter: 1,
   fine: 0.8,
   fineNear: 40,
-  fineChance: 0,
-  grout: 1.2,
-  groutVar: 0.16,
-  logoMix: 0.15,
+  fineChance: 0.78,
+  grout: 0,
+  groutVar: 0,
+  logoMix: 0,
   flow: 0.35,
   flowScale: 970,
   tone: 0,
-  round: 15,
-  seed: 15,
+  round: 16,
+  seed: 35,
 };
 
 type SliderKey = Exclude<keyof Settings, 'mark' | 'view'>;
@@ -826,11 +925,30 @@ const VIGNETTE_SLIDERS: Slider[] = [
   { key: 'zoom', min: 0.4, max: 1.5, step: 0.01 },
   { key: 'cover', min: 1, max: 20, step: 0.1 },
   { key: 'logoY', min: -0.4, max: 0.4, step: 0.005 },
+  { key: 'vigCells', min: 0, max: 1, step: 0.01 },
+  { key: 'underlay', min: 0, max: 1, step: 0.01 },
+  { key: 'vigDim', min: 0, max: 1, step: 0.01 },
+  { key: 'vigCut', min: 0, max: 1, step: 0.01 },
+  { key: 'vigJitter', min: 0, max: 1, step: 0.01 },
   { key: 'vigWidth', min: 0.2, max: 2, step: 0.01 },
   { key: 'vigHeight', min: 0.2, max: 2, step: 0.01 },
   { key: 'vigSoft', min: 0.05, max: 1, step: 0.01 },
   { key: 'vigTop', min: 0, max: 300, step: 5 },
   { key: 'vigBottom', min: 0, max: 900, step: 5 },
+];
+
+const TEXT_SLIDERS: Slider[] = [
+  { key: 'textClear', min: 0, max: 1, step: 1 },
+  { key: 'textPad', min: -40, max: 160, step: 1 },
+  { key: 'textRound', min: 0, max: 200, step: 1 },
+  { key: 'textJitter', min: 0, max: 160, step: 1 },
+];
+
+const SHADOW_SLIDERS: Slider[] = [
+  { key: 'shadowStrength', min: 0, max: 1, step: 0.01 },
+  { key: 'dmShadow', min: 0, max: 6, step: 0.1 },
+  { key: 'shadowHeight', min: 0, max: 80, step: 0.5 },
+  { key: 'shadowSoft', min: 0.5, max: 30, step: 0.5 },
 ];
 
 const LIGHT_MODE_SLIDERS: Slider[] = [
@@ -919,6 +1037,7 @@ const SLIDERS: Slider[] = [
 ];
 
 type Focus = { x: number; y: number };
+type TextBox = [number, number, number, number];
 
 type Rgb = [number, number, number];
 type Palette = { tileLow: Rgb; tileHigh: Rgb; logoLow: Rgb; logoHigh: Rgb; logoTint: Rgb; page: Rgb };
@@ -987,7 +1106,7 @@ function normalizeTint([r, g, b]: Rgb): Rgb {
   return [r / luma, g / luma, b / luma];
 }
 
-function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode: Mode): Uniforms {
+function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode: Mode, textBox: TextBox): Uniforms {
   const light = mode === 'light';
   return {
     u_cell: { type: 'uniform1f', value: settings.cell },
@@ -1012,6 +1131,18 @@ function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode:
     u_back_rim: { type: 'uniform1f', value: settings.backRim },
     u_glow_reach: { type: 'uniform1f', value: settings.glowReach },
     u_vig_width: { type: 'uniform1f', value: settings.vigWidth },
+    u_text_box: { type: 'uniform4f', value: settings.textClear ? textBox : [0, 0, 0, 0] },
+    u_text_pad: { type: 'uniform1f', value: settings.textPad },
+    u_underlay: { type: 'uniform1f', value: settings.underlay },
+    u_vig_dim: { type: 'uniform1f', value: settings.vigDim },
+    u_text_round: { type: 'uniform1f', value: settings.textRound },
+    u_text_jitter: { type: 'uniform1f', value: settings.textJitter },
+    u_shadow_strength: { type: 'uniform1f', value: settings.shadowStrength * (light ? 1 : settings.dmShadow) },
+    u_shadow_height: { type: 'uniform1f', value: settings.shadowHeight },
+    u_shadow_soft: { type: 'uniform1f', value: settings.shadowSoft },
+    u_vig_cells: { type: 'uniform1f', value: settings.vigCells },
+    u_vig_cut: { type: 'uniform1f', value: settings.vigCut },
+    u_vig_jitter: { type: 'uniform1f', value: settings.vigJitter },
     u_logo_y: { type: 'uniform1f', value: settings.logoY },
     u_zoom: { type: 'uniform1f', value: settings.zoom },
     u_cover: { type: 'uniform1f', value: settings.cover },
@@ -1184,7 +1315,7 @@ function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Se
       />
     ));
   return (
-    <div className='fixed bottom-4 right-4 z-50 flex max-h-[calc(100svh-2rem)] w-72 flex-col gap-2 overflow-y-auto rounded-lg border border-neutral-200 bg-white/90 p-3 text-left text-xs text-neutral-800 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-neutral-200'>
+    <div className='fixed bottom-4 right-4 z-50 flex max-h-[calc(100svh-2rem)] w-72 flex-col gap-2 overflow-y-auto overscroll-contain rounded-lg border border-neutral-200 bg-white/90 p-3 text-left text-xs text-neutral-800 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-neutral-200'>
       <SelectRow
         label='view'
         value={settings.view}
@@ -1192,10 +1323,28 @@ function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Se
         onChange={view => onChange({ ...settings, view })}
       />
       <PanelSection
+        title='Frame'
+        defaultOpen
+      >
+        {sliders(VIGNETTE_SLIDERS)}
+      </PanelSection>
+      <PanelSection
         title='Light'
         defaultOpen
       >
         {sliders(LIGHT_SLIDERS)}
+      </PanelSection>
+      <PanelSection
+        title='Text clearance'
+        defaultOpen
+      >
+        {sliders(TEXT_SLIDERS)}
+      </PanelSection>
+      <PanelSection
+        title='Shadow'
+        defaultOpen
+      >
+        {sliders(SHADOW_SLIDERS)}
       </PanelSection>
       <PanelSection
         title='Light mode'
@@ -1208,12 +1357,6 @@ function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Se
         defaultOpen
       >
         {sliders(SHEEN_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Frame'
-        defaultOpen
-      >
-        {sliders(VIGNETTE_SLIDERS)}
       </PanelSection>
       <PanelSection title='Backlight'>{sliders(BACKLIGHT_SLIDERS)}</PanelSection>
       <PanelSection title='Glass'>{sliders(GLASS_SLIDERS)}</PanelSection>
@@ -1259,6 +1402,7 @@ const BELOW_HEADLINE = 160;
 function useSceneLayout(ref: React.RefObject<HTMLDivElement | null>) {
   const [height, setHeight] = React.useState<number | null>(null);
   const [focus, setFocus] = React.useState<Focus>({ x: 0, y: 0 });
+  const [textBox, setTextBox] = React.useState<TextBox>([0, 0, 0, 0]);
   React.useEffect(() => {
     const scene = ref.current;
     const section = scene?.parentElement;
@@ -1276,13 +1420,33 @@ function useSceneLayout(ref: React.RefObject<HTMLDivElement | null>) {
       } else {
         setFocus({ x: sceneRect.width / 2, y: sceneRect.height / 3 });
       }
+      const parts = [
+        section.querySelector('[data-hero-eyebrow]'),
+        headline,
+        headline.nextElementSibling,
+        section.querySelector('[data-hero-end]')?.firstElementChild,
+      ].filter((part): part is Element => part instanceof Element);
+      const rects = parts.map(part => {
+        const range = document.createRange();
+        range.selectNodeContents(part);
+        const tight = range.getBoundingClientRect();
+        return tight.width > 0 ? tight : part.getBoundingClientRect();
+      });
+      if (rects.length > 0) {
+        setTextBox([
+          Math.min(...rects.map(rect => rect.left)) - sceneRect.left,
+          Math.min(...rects.map(rect => rect.top)) - sceneRect.top,
+          Math.max(...rects.map(rect => rect.right)) - sceneRect.left,
+          Math.max(...rects.map(rect => rect.bottom)) - sceneRect.top,
+        ]);
+      }
     };
     const observer = new ResizeObserver(measure);
     observer.observe(section);
     observer.observe(headline);
     return () => observer.disconnect();
   }, [ref]);
-  return { height, focus };
+  return { height, focus, textBox };
 }
 
 function useLightSpring(ref: React.RefObject<HTMLDivElement | null>, enabled: boolean) {
@@ -1305,20 +1469,38 @@ function useLightSpring(ref: React.RefObject<HTMLDivElement | null>, enabled: bo
 
 export function MosaicScene() {
   const sceneRef = React.useRef<HTMLDivElement>(null);
-  const { height, focus } = useSceneLayout(sceneRef);
+  const { height, focus, textBox } = useSceneLayout(sceneRef);
   const [settings, setSettings] = React.useState(DEFAULTS);
   const mode = useMode();
   const palette = React.useMemo(() => readPalette(mode) ?? FALLBACK_PALETTE, [mode]);
-  const spring = useLightSpring(sceneRef, settings.follow > 0);
-  const uniforms = React.useMemo(() => buildUniforms(settings, focus, palette, mode), [settings, focus, palette, mode]);
+  const spring = useLightSpring(sceneRef, POINTER_EFFECTS && settings.follow > 0);
+  const uniforms = React.useMemo(
+    () => buildUniforms(settings, focus, palette, mode, textBox),
+    [settings, focus, palette, mode, textBox],
+  );
   const { lightX, follow } = settings;
-  React.useEffect(() => startTrail(), []);
-  const stepSceneTrail = React.useCallback(() => stepTrail(sceneRef.current), []);
+  React.useEffect(() => (POINTER_EFFECTS ? startTrail() : undefined), []);
+  const stepSceneTrail = React.useCallback(() => {
+    if (POINTER_EFFECTS) {
+      stepTrail(sceneRef.current);
+    }
+  }, []);
+  const mounted = React.useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
   const liveUniforms = React.useCallback(
     (): Uniforms => ({
       u_light_x: { type: 'uniform1f', value: lightX + (spring.get() - lightX) * follow },
     }),
     [spring, lightX, follow],
+  );
+  const { sheen } = settings;
+  const shouldRender = React.useCallback(
+    () =>
+      POINTER_EFFECTS && ((sheen > 0 && TRAIL_ENERGY_UNIFORM.value > 0.001) || (follow > 0 && spring.isAnimating())),
+    [sheen, follow, spring],
   );
   return (
     <>
@@ -1332,16 +1514,20 @@ export function MosaicScene() {
           source={source}
           uniforms={uniforms}
           liveUniforms={liveUniforms}
+          shouldRender={shouldRender}
           onRender={stepSceneTrail}
           premultiplied
         />
       </div>
-      {process.env.NODE_ENV === 'development' ? (
-        <Panel
-          settings={settings}
-          onChange={setSettings}
-        />
-      ) : null}
+      {process.env.NODE_ENV === 'development' && mounted
+        ? createPortal(
+            <Panel
+              settings={settings}
+              onChange={setSettings}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

@@ -22,6 +22,7 @@ void main(void) {
 type Uniform =
   | { type: 'uniform1f'; value: number }
   | { type: 'uniform3f'; value: [number, number, number] }
+  | { type: 'uniform4f'; value: [number, number, number, number] }
   | { type: 'uniform1fv'; value: Array<number> }
   | { type: 'uniform3fv'; value: Array<[number, number, number]> }
   | { type: 'uniform1i'; value: number };
@@ -70,6 +71,7 @@ interface ShaderProps {
   initialState?: 'playing' | 'paused';
   onRender?: (time: number) => void;
   liveUniforms?: () => Uniforms;
+  shouldRender?: () => boolean;
   premultiplied?: boolean;
 }
 
@@ -138,6 +140,7 @@ export const Shader = forwardRef(function Shader(
     initialState = 'playing',
     onRender,
     liveUniforms,
+    shouldRender,
     premultiplied = false,
   }: ShaderProps,
   ref: React.ForwardedRef<ShaderHandle>,
@@ -150,12 +153,16 @@ export const Shader = forwardRef(function Shader(
   const liveUniformsRef = useRef(liveUniforms);
   const renderRef = useRef<((timestamp: number) => void) | null>(null);
   const runRef = useRef(0);
+  const dirtyRef = useRef(true);
+  const shouldRenderRef = useRef(shouldRender);
 
   useAnimationFrame(timestamp => renderRef.current?.(timestamp));
   useEffect(() => {
     uniformsRef.current = uniforms;
     liveUniformsRef.current = liveUniforms;
-  }, [uniforms, liveUniforms]);
+    shouldRenderRef.current = shouldRender;
+    dirtyRef.current = true;
+  }, [uniforms, liveUniforms, shouldRender]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -287,6 +294,11 @@ export const Shader = forwardRef(function Shader(
 
       currentTime.current = now - startTime;
       onRender?.(currentTime.current);
+      const wanted = shouldRenderRef.current;
+      if (wanted && !dirtyRef.current && !wanted()) {
+        return;
+      }
+      dirtyRef.current = false;
 
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -306,6 +318,9 @@ export const Shader = forwardRef(function Shader(
             break;
           case 'uniform3f':
             gl.uniform3f(location, uniform.value[0], uniform.value[1], uniform.value[2]);
+            break;
+          case 'uniform4f':
+            gl.uniform4f(location, uniform.value[0], uniform.value[1], uniform.value[2], uniform.value[3]);
             break;
           case 'uniform1fv':
             gl.uniform1fv(location, uniform.value);
@@ -385,6 +400,7 @@ export const Shader = forwardRef(function Shader(
       canvas.width = canvas.offsetWidth * scale;
       canvas.height = canvas.offsetHeight * scale;
       gl?.uniform2f(resolutionUniformLocation, canvas.width / scale, canvas.height / scale);
+      dirtyRef.current = true;
     });
     observer.observe(canvas);
 

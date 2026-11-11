@@ -10,6 +10,7 @@ const SPAN = 64 * MAJOR;
 
 type GridLook = { color: string; major: number; minor: number; mask: string; trail: string; trailAlpha: number };
 
+const TRAIL_ENABLED = false;
 const TRAIL_LIFE = 260;
 const EYEBROW_PAD = 8;
 
@@ -59,7 +60,7 @@ function useGridTrail(
     const wrapper = wrapperRef.current;
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d', { desynchronized: true });
-    if (!wrapper || !canvas || !context || reduced || top === null) {
+    if (!TRAIL_ENABLED || !wrapper || !canvas || !context || reduced || top === null) {
       return;
     }
     const color = getComputedStyle(document.documentElement).getPropertyValue(look.trail).trim() || '#7344fd';
