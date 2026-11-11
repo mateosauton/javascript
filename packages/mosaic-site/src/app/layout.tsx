@@ -1,15 +1,22 @@
 import './globals.css';
 
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 import type React from 'react';
 
 import { ThemeProvider } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
-const heading = Geist({ subsets: ['latin'], variable: '--font-heading' });
-const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
-const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
+const sans = localFont({
+  src: './fonts/TimelessSansVF.woff2',
+  weight: '300 800',
+  variable: '--font-sans',
+});
+const mono = localFont({
+  src: './fonts/PaperMono-VF.woff2',
+  weight: '100 800',
+  variable: '--font-mono',
+});
 export const metadata: Metadata = {
   title: 'Clerk UI',
   description:
@@ -20,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang='en'
       suppressHydrationWarning
-      className={cn('font-sans antialiased', heading.variable, sans.variable, mono.variable)}
+      className={cn('font-sans antialiased', sans.variable, mono.variable)}
     >
       <head>
         {process.env.NODE_ENV === 'development' && (

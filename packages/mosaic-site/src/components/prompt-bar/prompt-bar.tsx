@@ -140,7 +140,7 @@ function PromptScroller({ scrollerRef: ref, children }: { scrollerRef: RefObject
       ref={ref}
       style={{ maskImage: mask }}
       className={clsx(
-        'body-3 text-(--glass-ink) flex min-w-0 flex-1 items-center overflow-x-scroll whitespace-nowrap pl-1.5 pr-3 text-left font-mono',
+        'code-1 text-(--glass-ink) flex min-w-0 flex-1 items-center overflow-x-scroll whitespace-nowrap pl-1.5 pr-3 text-left',
         'scrollbar-none',
       )}
       // Chrome gives a scroll container its own tab stop, which would add a second focus stop
@@ -271,7 +271,7 @@ export function PromptBar({
                 {isCommand && (
                   <span
                     aria-hidden
-                    className='body-3 text-(--glass-ink) flex items-center font-mono opacity-50'
+                    className='code-1 text-(--glass-ink) flex items-center opacity-50'
                   >
                     <span
                       className={trimToCapHeight}

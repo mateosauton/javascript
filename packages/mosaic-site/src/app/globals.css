@@ -5,31 +5,48 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #f7f7f8;
-  --foreground: #131316;
+  --font-heading: var(--font-sans);
+  --background: var(--color-gray-50);
+  --foreground: var(--color-gray-950);
+  --ink: var(--color-gray-950);
+  --ink-subtle: var(--color-gray-700);
+  --background-subtle: var(--color-gray-100);
+  --border: var(--color-gray-150);
 }
 
 .dark {
-  --background: #0d0d0d;
-  --foreground: #fafafa;
-  --color-gray-300: #b8b8b8;
-  --color-gray-400: #9a9a9a;
-  --color-gray-500: #737373;
-  --color-gray-600: #555555;
-  --color-gray-700: #333333;
-  --color-gray-800: #222222;
-  --color-gray-900: #161616;
-  --color-gray-950: #0d0d0d;
-  --color-gray-750: #2a2a2a;
-  --color-gray-850: #1b1b1b;
-  --color-neutral-300: #b8b8b8;
-  --color-neutral-400: #9a9a9a;
-  --color-neutral-500: #737373;
-  --color-neutral-600: #555555;
-  --color-neutral-700: #333333;
-  --color-neutral-800: #222222;
-  --color-neutral-900: #161616;
-  --color-neutral-950: #0d0d0d;
+  --background: var(--color-gray-950);
+  --foreground: var(--color-gray-25);
+  --ink: var(--color-gray-25);
+  --ink-subtle: var(--color-gray-300);
+  --background-subtle: var(--color-gray-900);
+  --border: var(--color-gray-800);
+  --color-gray-300: #bab8b5;
+  --color-gray-400: #9c9a96;
+  --color-gray-500: #76726e;
+  --color-gray-600: #595450;
+  --color-gray-700: #36322f;
+  --color-gray-750: #2d2926;
+  --color-gray-800: #24211f;
+  --color-gray-850: #1d1b18;
+  --color-gray-900: #181613;
+  --color-gray-950: #0f0d0b;
+}
+
+@media (color-gamut: p3) {
+  :root {
+    --color-purple-50: oklch(0.967 0.019 296.6);
+    --color-purple-100: oklch(0.94 0.034 291.8);
+    --color-purple-200: oklch(0.885 0.064 291.5);
+    --color-purple-300: oklch(0.797 0.119 291.9);
+    --color-purple-400: oklch(0.687 0.188 290.5);
+    --color-purple-500: oklch(0.558 0.271 286.5);
+    --color-purple-600: oklch(0.519 0.282 287);
+    --color-purple-700: oklch(0.471 0.264 286.1);
+    --color-purple-800: oklch(0.415 0.231 286.6);
+    --color-purple-900: oklch(0.364 0.195 287.7);
+    --color-purple-950: oklch(0.271 0.149 284.8);
+  }
 }
 
 html {
@@ -41,6 +58,7 @@ html {
 }
 
 body {
+  font-weight: 420;
   background-color: var(--background);
   color: var(--foreground);
 }
@@ -48,38 +66,42 @@ body {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-background-subtle: var(--background-subtle);
+  --color-border: var(--border);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
 
 @theme {
-  --color-gray-25: #fafafb;
-  --color-gray-50: #f7f7f8;
-  --color-gray-100: #eeeef0;
-  --color-gray-150: #e3e3e7;
-  --color-gray-200: #d9d9de;
-  --color-gray-300: #b7b8c2;
-  --color-gray-400: #9394a1;
-  --color-gray-500: #747686;
-  --color-gray-600: #5e5f6e;
-  --color-gray-700: #42434d;
-  --color-gray-750: #373840;
-  --color-gray-800: #2f3037;
-  --color-gray-850: #27272d;
-  --color-gray-900: #212126;
-  --color-gray-950: #131316;
+  --color-gray-25: #fafaf9;
+  --color-gray-50: #f7f7f6;
+  --color-gray-100: #efeeed;
+  --color-gray-150: #e4e3e1;
+  --color-gray-200: #dbd9d7;
+  --color-gray-300: #bbb9b5;
+  --color-gray-400: #989591;
+  --color-gray-500: #7a7772;
+  --color-gray-600: #64605b;
+  --color-gray-700: #48433e;
+  --color-gray-750: #3c3834;
+  --color-gray-800: #34302c;
+  --color-gray-850: #2a2724;
+  --color-gray-900: #24211e;
+  --color-gray-950: #151311;
 
-  --color-neutral-50: #f7f7f8;
-  --color-neutral-100: #eeeef0;
-  --color-neutral-200: #d9d9de;
-  --color-neutral-300: #b7b8c2;
-  --color-neutral-400: #9394a1;
-  --color-neutral-500: #747686;
-  --color-neutral-600: #5e5f6e;
-  --color-neutral-700: #42434d;
-  --color-neutral-800: #2f3037;
-  --color-neutral-900: #212126;
-  --color-neutral-950: #131316;
+  --color-neutral-50: var(--color-gray-50);
+  --color-neutral-100: var(--color-gray-100);
+  --color-neutral-200: var(--color-gray-200);
+  --color-neutral-300: var(--color-gray-300);
+  --color-neutral-400: var(--color-gray-400);
+  --color-neutral-500: var(--color-gray-500);
+  --color-neutral-600: var(--color-gray-600);
+  --color-neutral-700: var(--color-gray-700);
+  --color-neutral-800: var(--color-gray-800);
+  --color-neutral-900: var(--color-gray-900);
+  --color-neutral-950: var(--color-gray-950);
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1.25rem;
@@ -120,17 +142,17 @@ body {
 
   --font-weight-book: 450;
 
-  --color-purple-50: #f4f2ff;
-  --color-purple-100: #eae8ff;
-  --color-purple-200: #d7d4ff;
-  --color-purple-300: #bab1ff;
-  --color-purple-400: #9785ff;
-  --color-purple-500: #6c47ff;
-  --color-purple-600: #6430f7;
-  --color-purple-700: #561ee3;
-  --color-purple-800: #4818bf;
-  --color-purple-900: #3c169c;
-  --color-purple-950: #230b6a;
+  --color-purple-50: #f5f2ff;
+  --color-purple-100: #ebe8ff;
+  --color-purple-200: #d9d3fe;
+  --color-purple-300: #beb0fe;
+  --color-purple-400: #9c83fd;
+  --color-purple-500: #7344fd;
+  --color-purple-600: #6b2cf5;
+  --color-purple-700: #5d18e1;
+  --color-purple-800: #4e13bd;
+  --color-purple-900: #41139a;
+  --color-purple-950: #260969;
 
   --color-sky-50: #ebfdff;
   --color-sky-100: #ccf9ff;
@@ -171,137 +193,221 @@ body {
 
 @utility heading-1 {
   font-family: var(--font-sans);
-  font-size: 4rem;
-  line-height: 112.5%;
-  font-weight: 700;
-  letter-spacing: -0.035em;
+  font-size: 3rem;
+  line-height: 3.25rem;
+  font-weight: 660;
+  letter-spacing: -0.052em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 635;
+  }
 }
+
 @utility heading-2 {
   font-family: var(--font-sans);
-  font-size: 3.5rem;
-  line-height: 114.286%;
-  font-weight: 600;
-  letter-spacing: -0.035em;
+  font-size: 2.5rem;
+  line-height: 2.75rem;
+  font-weight: 645;
+  letter-spacing: -0.051em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 620;
+  }
 }
+
 @utility heading-3 {
   font-family: var(--font-sans);
-  font-size: 3rem;
-  line-height: 116.667%;
-  font-weight: 600;
-  letter-spacing: -0.035em;
+  font-size: 2rem;
+  line-height: 2.25rem;
+  font-weight: 630;
+  letter-spacing: -0.05em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 605;
+  }
 }
+
 @utility heading-4 {
   font-family: var(--font-sans);
-  font-size: 2rem;
-  line-height: 112.5%;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  font-weight: 615;
+  letter-spacing: -0.04em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 590;
+  }
 }
+
 @utility heading-5 {
   font-family: var(--font-sans);
   font-size: 1.25rem;
-  line-height: 130%;
+  line-height: 1.5rem;
   font-weight: 600;
+  letter-spacing: -0.032em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 575;
+  }
 }
+
 @utility heading-6 {
   font-family: var(--font-sans);
   font-size: 1.125rem;
-  line-height: 133.333%;
-  font-weight: 600;
+  line-height: 1.5rem;
+  font-weight: 590;
+  letter-spacing: -0.03em;
+
+  &:where(.dark, .dark *) {
+    font-weight: 565;
+  }
 }
+
 @utility subheading-1 {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
-  line-height: 184.615%;
+  line-height: 1.25rem;
   font-weight: 500;
 }
+
 @utility body-1 {
   font-family: var(--font-sans);
-  font-size: 1.125rem;
-  line-height: 155.556%;
-  font-weight: 400;
+  font-size: 1.1875rem;
+  line-height: 2rem;
+  font-weight: 420;
+  letter-spacing: -0.01em;
 }
+
 @utility body-2 {
   font-family: var(--font-sans);
   font-size: 0.9375rem;
-  line-height: 160%;
-  font-weight: 400;
+  line-height: 1.5rem;
+  font-weight: 420;
 }
+
 @utility body-3 {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
-  line-height: 153.846%;
-  font-weight: 400;
+  line-height: 1.25rem;
+  font-weight: 420;
 }
+
 @utility body-4 {
   font-family: var(--font-sans);
   font-size: 0.6875rem;
-  line-height: 163.636%;
-  font-weight: 400;
+  line-height: 1rem;
+  font-weight: 420;
+  letter-spacing: 0.01em;
 }
+
 @utility body-5 {
   font-family: var(--font-sans);
   font-size: 0.625rem;
-  line-height: 150%;
-  font-weight: 400;
+  line-height: 1rem;
+  font-weight: 420;
+  letter-spacing: 0.01em;
 }
+
 @utility label-1 {
   font-family: var(--font-sans);
-  font-size: 1.125rem;
-  line-height: 155.556%;
+  font-size: 1.1875rem;
+  line-height: 2rem;
   font-weight: 500;
+  letter-spacing: -0.01em;
 }
+
 @utility label-2 {
   font-family: var(--font-sans);
   font-size: 0.9375rem;
-  line-height: 160%;
+  line-height: 1.5rem;
   font-weight: 500;
 }
+
 @utility label-3 {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
-  line-height: 153.846%;
+  line-height: 1.25rem;
   font-weight: 500;
 }
+
 @utility label-4 {
   font-family: var(--font-sans);
   font-size: 0.6875rem;
-  line-height: 163.636%;
+  line-height: 1rem;
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
+
 @utility label-5 {
   font-family: var(--font-sans);
   font-size: 0.625rem;
-  line-height: 150%;
+  line-height: 1rem;
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
+
 @utility mono-1 {
   font-family: var(--font-mono);
   font-size: 0.875rem;
-  line-height: 142.857%;
-  font-weight: 500;
+  line-height: 1.5rem;
+  font-weight: 450;
 }
+
 @utility mono-2 {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  line-height: 150%;
-  font-weight: 500;
+  line-height: 1rem;
+  font-weight: 460;
 }
+
+@utility code-1 {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'zero';
+  font-variant-ligatures: none;
+}
+
+@utility code-inline {
+  font-family: var(--font-mono);
+  font-size: 0.93em;
+  line-height: inherit;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'zero';
+  font-variant-ligatures: none;
+}
+
 @utility tag-1 {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  line-height: 163.636%;
+  line-height: 1rem;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
 @utility tag-2 {
   font-family: var(--font-mono);
   font-size: 0.625rem;
-  line-height: 160%;
+  line-height: 1rem;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+@utility stack-* {
+  display: flex;
+  flex-direction: column;
+  gap: calc(--value(integer) * 0.5rem);
+}
+
+@utility heading-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 @property --mx {

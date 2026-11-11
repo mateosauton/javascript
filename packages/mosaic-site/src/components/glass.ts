@@ -3,12 +3,13 @@ import type { CSSProperties } from 'react';
 
 // Pick by what sits behind the bar:
 //   light mode: gray-50 on white, white on gray-50 or gray-100
-//   dark mode:  gray-850 on gray-950 (as on /mcp, /protect, and /agents), gray-950 on gray-900, gray-900 on black
+//   dark mode:  gray-800 on gray-950 (as on /mcp, /protect, and /agents), gray-950 on gray-900, gray-900 on black
 // The edges are the surface with black mixed in; for these grays, mixing in oklab steps the
 // OKLCH lightness down by a fixed amount (0.1 and 0.04 light, 0.06 and 0.02 dark).
 const TONES = {
   white: { base: 'var(--color-white)', kind: 'light', edge: '10%', edgeMid: '4%' },
   'gray-50': { base: 'var(--color-gray-50)', kind: 'light', edge: '10.2%', edgeMid: '4.1%' },
+  'gray-800': { base: 'var(--color-gray-800)', kind: 'dark', edge: '21.8%', edgeMid: '7.3%' },
   'gray-850': { base: 'var(--color-gray-850)', kind: 'dark', edge: '21.8%', edgeMid: '7.3%' },
   'gray-900': { base: 'var(--color-gray-900)', kind: 'dark', edge: '24%', edgeMid: '8%' },
   'gray-950': { base: 'var(--color-gray-950)', kind: 'dark', edge: '31.9%', edgeMid: '10.6%' },
