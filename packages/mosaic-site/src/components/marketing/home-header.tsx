@@ -15,7 +15,7 @@ export function HomeHeader() {
             aria-label='Clerk UI home'
             className='text-foreground -ml-px flex items-center'
           >
-            <ClerkUILogo className='h-5' />
+            <ClerkUILogo className='h-[1.125rem]' />
           </Link>
           <VersionBadge />
         </div>

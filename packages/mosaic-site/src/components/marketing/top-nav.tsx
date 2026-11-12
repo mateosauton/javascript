@@ -17,7 +17,7 @@ export function TopNav() {
   const [theme, setTheme] = useMosaicTheme();
   React.useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'default') {
+    if (theme === 'default' || pathname === '/') {
       delete root.dataset.mosaicTheme;
     } else {
       root.dataset.mosaicTheme = theme;

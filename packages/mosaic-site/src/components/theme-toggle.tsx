@@ -3,11 +3,12 @@
 import { useTheme } from 'next-themes';
 
 import { SegmentedControl } from '@/components/gallery/segmented-control';
-import { useMode } from '@/components/use-mode';
+import { useMode, useSystemMode } from '@/components/use-mode';
 import { cn } from '@/lib/utils';
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const { setTheme, systemTheme } = useTheme();
+  const { setTheme } = useTheme();
+  const systemTheme = useSystemMode();
   const dark = useMode() === 'dark';
   const target = dark ? 'light' : 'dark';
   const label = `Switch to ${target} mode${target === systemTheme ? ' (system default)' : ''}`;

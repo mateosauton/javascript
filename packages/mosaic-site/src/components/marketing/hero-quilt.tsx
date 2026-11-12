@@ -20,7 +20,9 @@ export function HeroQuilt({ scene, anchor }: { scene: React.ReactNode; anchor?: 
       </div>
       <HeroMicrographic />
       <h1 className='heading-3 sm:heading-2 lg:heading-1 mt-2 max-w-3xl text-balance'>
-        Production-ready UI your agents can build with
+        Production-ready UI
+        <br />
+        built for agents
       </h1>
       <p className='body-2 mt-2 max-w-xl text-balance text-neutral-600 dark:text-neutral-400'>
         Agent-native authentication components, powered by Clerk.

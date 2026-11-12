@@ -2,8 +2,8 @@ export type SceneThemeId = 'github' | 'linear';
 export type SceneThemeChoice = 'default' | SceneThemeId;
 
 export const SCENE_THEMES: { id: SceneThemeId; label: string; description: string }[] = [
-  { id: 'github', label: 'Classic', description: 'Bordered boxes, outlined badges, a sidebar marker' },
-  { id: 'linear', label: 'Sleek', description: 'Nested frames, hairline rings, pill controls' },
+  { id: 'github', label: 'Workday', description: 'Bordered boxes, outlined badges, a sidebar marker' },
+  { id: 'linear', label: 'After hours', description: 'Nested frames, hairline rings, pill controls' },
 ];
 
 const scope = (id: SceneThemeChoice, selector = '') => `[data-scene-theme='${id}']${selector ? ` ${selector}` : ''}`;
