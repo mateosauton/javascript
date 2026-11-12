@@ -1,5 +1,11 @@
 # @clerk/mosaic
 
+## 0.5.0
+
+### Minor Changes
+
+- Picking a profile picture in `UserProfile`, or a logo in `OrganizationProfile` or `CreateOrganization`, now opens a dialog to crop it to a square before it uploads. Animated images upload as picked. ([#10784](https://github.com/clerk/javascript/pull/10784)) by [@alexcarpenter](https://github.com/alexcarpenter)
+
 ## 0.4.0
 
 ### Minor Changes
