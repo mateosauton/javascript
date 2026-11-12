@@ -118,6 +118,7 @@ const REVEAL_SLIDERS: Array<{ key: keyof Reveal; min: number; max: number; step:
   { key: 'blur', min: 0, max: 18, step: 0.5 },
 ];
 
+const SHOW_REVEAL_PANEL = false;
 const SWEEP_MS = 1800;
 const MIN_SWEEPS = 1.5;
 
@@ -754,7 +755,7 @@ export function BakedMosaic() {
           />
         </div>
       ) : null}
-      {process.env.NODE_ENV === 'development' && mounted
+      {SHOW_REVEAL_PANEL && process.env.NODE_ENV === 'development' && mounted
         ? createPortal(
             <RevealPanel
               reveal={reveal}
