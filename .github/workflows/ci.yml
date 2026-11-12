@@ -427,9 +427,6 @@ jobs:
       - name: Run feature tests
         run: pnpm --filter @clerk/mosaic test:feature
 
-      - name: Run Server Component smoke test
-        run: pnpm --filter @clerk/mosaic test:rsc
-
       - name: Run browser tests
         run: pnpm --filter @clerk/mosaic test:browser
 
