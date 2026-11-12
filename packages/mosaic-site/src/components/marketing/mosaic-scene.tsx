@@ -92,6 +92,11 @@ uniform float u_vig_width;
 uniform vec4 u_text_box;
 uniform float u_text_pad;
 uniform float u_underlay;
+uniform float u_base_mix;
+uniform float u_prism;
+uniform float u_prism_width;
+uniform float u_prism_spread;
+uniform float u_prism_side;
 uniform float u_vig_dim;
 uniform float u_text_round;
 uniform float u_text_jitter;
@@ -620,7 +625,7 @@ void main() {
 
   float purpleAmount = u_tint * mix(1.0, hash1(tileId + 131.0), u_hue_spread) + u_logo_tint * logoAmount;
   vec3 tint = mix(vec3(1.0), u_logo_tint_color, purpleAmount);
-  vec3 tinted = color * tint;
+  vec3 tinted = mix(color, u_page_color, u_base_mix) * tint;
   float thick = smoothstep(0.0, max(u_depth_reach, 0.001), e.x - groutHalf) * (0.85 + 0.15 * clamp(wobble + 0.5, 0.0, 1.0));
   vec3 deep = tinted * tint * 0.78;
   vec3 thin = mix(tinted, vec3(dot(tinted, LUMA)), 0.5) * 1.35;
@@ -644,6 +649,17 @@ void main() {
   float backRim = pow(1.0 - facing, u_fresnel_power) * smoothstep(0.0, 0.6, reflected.y);
   float rimZone = 1.0 - smoothstep(0.0, 3.0 * max(u_bevel_width, 0.5), e.x - groutHalf);
   color += u_back_color * near * (u_back_glow * rimZone + u_back_rim * backRim);
+
+  if (u_prism > 0.0) {
+    float across = clamp((e.x - groutHalf) / max(u_prism_width, 0.5), 0.0, 1.0);
+    vec2 lightFlat = normalize(toLight.xy + 0.0001);
+    float away = clamp(dot(e.yz, lightFlat), 0.0, 1.0);
+    float facing = mix(away * away, 1.0, u_prism_side);
+    float band = 4.0 * across * (1.0 - across);
+    vec3 spectrum = 0.5 + 0.5 * cos(TAU * (across * u_prism_spread + vec3(0.0, 0.33, 0.67)));
+    float weight = band * facing * u_prism;
+    color += (spectrum - vec3(dot(spectrum, vec3(0.333)))) * weight + spectrum * weight * 0.25;
+  }
 
   if (u_view == 7) {
     color = albedo;
@@ -723,6 +739,12 @@ type Settings = {
   textClear: number;
   textPad: number;
   underlay: number;
+  lmBase: number;
+  dmBase: number;
+  prism: number;
+  prismWidth: number;
+  prismSpread: number;
+  prismSide: number;
   vigDim: number;
   textRound: number;
   textJitter: number;
@@ -822,10 +844,16 @@ const DEFAULTS: Settings = {
   textClear: 1,
   textPad: 24,
   underlay: 0,
+  lmBase: 0.3,
+  dmBase: 0.33,
+  prism: 0.13,
+  prismWidth: 9.5,
+  prismSpread: 1.78,
+  prismSide: 0,
   vigDim: 0,
   textRound: 47,
   textJitter: 16,
-  shadowStrength: 0.3,
+  shadowStrength: 0.21,
   dmShadow: 3.8,
   shadowHeight: 6,
   shadowSoft: 25,
@@ -854,8 +882,8 @@ const DEFAULTS: Settings = {
   diffuse: 3,
   specular: 0.12,
   specSize: 7,
-  lmShadow: 0.24,
-  lmDepth: 0.05,
+  lmShadow: 0.08,
+  lmDepth: 0.02,
   fresnel: 0.42,
   fresnelPower: 7,
   rim: 0.29,
@@ -864,31 +892,31 @@ const DEFAULTS: Settings = {
   viewX: 0,
   viewY: 0,
   mark: 1,
-  logoSize: 680,
+  logoSize: 650,
   threshold: 0.42,
   cut: 0.12,
-  cell: 115,
-  jitter: 0.44,
-  row: 32,
-  rowVar: 0.04,
+  cell: 82,
+  jitter: 0,
+  row: 45,
+  rowVar: 0,
   brick: 187,
   brickVar: 0,
-  breakOut: 85,
-  breakFreq: 2.6,
-  breakVar: 1,
-  hug: 22,
+  breakOut: 53,
+  breakFreq: 1.5,
+  breakVar: 0,
+  hug: 25,
   hugLen: 120,
   hugJitter: 1,
-  fine: 0.8,
-  fineNear: 40,
-  fineChance: 0.78,
-  grout: 0,
+  fine: 0.9,
+  fineNear: 71,
+  fineChance: 0.7,
+  grout: 0.6,
   groutVar: 0,
-  logoMix: 0,
-  flow: 0.35,
+  logoMix: 0.38,
+  flow: 0,
   flowScale: 970,
-  tone: 0,
-  round: 16,
+  tone: 1,
+  round: 12.5,
   seed: 35,
 };
 
@@ -935,6 +963,18 @@ const VIGNETTE_SLIDERS: Slider[] = [
   { key: 'vigSoft', min: 0.05, max: 1, step: 0.01 },
   { key: 'vigTop', min: 0, max: 300, step: 5 },
   { key: 'vigBottom', min: 0, max: 900, step: 5 },
+];
+
+const BASE_SLIDERS: Slider[] = [
+  { key: 'lmBase', min: 0, max: 1, step: 0.01 },
+  { key: 'dmBase', min: 0, max: 1, step: 0.01 },
+];
+
+const PRISM_SLIDERS: Slider[] = [
+  { key: 'prism', min: 0, max: 2, step: 0.01 },
+  { key: 'prismWidth', min: 0.5, max: 30, step: 0.5 },
+  { key: 'prismSpread', min: 0, max: 3, step: 0.01 },
+  { key: 'prismSide', min: 0, max: 1, step: 0.01 },
 ];
 
 const TEXT_SLIDERS: Slider[] = [
@@ -1134,6 +1174,11 @@ function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode:
     u_text_box: { type: 'uniform4f', value: settings.textClear ? textBox : [0, 0, 0, 0] },
     u_text_pad: { type: 'uniform1f', value: settings.textPad },
     u_underlay: { type: 'uniform1f', value: settings.underlay },
+    u_base_mix: { type: 'uniform1f', value: light ? settings.lmBase : settings.dmBase },
+    u_prism: { type: 'uniform1f', value: settings.prism },
+    u_prism_width: { type: 'uniform1f', value: settings.prismWidth },
+    u_prism_spread: { type: 'uniform1f', value: settings.prismSpread },
+    u_prism_side: { type: 'uniform1f', value: settings.prismSide },
     u_vig_dim: { type: 'uniform1f', value: settings.vigDim },
     u_text_round: { type: 'uniform1f', value: settings.textRound },
     u_text_jitter: { type: 'uniform1f', value: settings.textJitter },
@@ -1322,42 +1367,14 @@ function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Se
         options={VIEWS}
         onChange={view => onChange({ ...settings, view })}
       />
-      <PanelSection
-        title='Frame'
-        defaultOpen
-      >
-        {sliders(VIGNETTE_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Light'
-        defaultOpen
-      >
-        {sliders(LIGHT_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Text clearance'
-        defaultOpen
-      >
-        {sliders(TEXT_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Shadow'
-        defaultOpen
-      >
-        {sliders(SHADOW_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Light mode'
-        defaultOpen
-      >
-        {sliders(LIGHT_MODE_SLIDERS)}
-      </PanelSection>
-      <PanelSection
-        title='Sheen'
-        defaultOpen
-      >
-        {sliders(SHEEN_SLIDERS)}
-      </PanelSection>
+      <PanelSection title='Frame'>{sliders(VIGNETTE_SLIDERS)}</PanelSection>
+      <PanelSection title='Light'>{sliders(LIGHT_SLIDERS)}</PanelSection>
+      <PanelSection title='Base color'>{sliders(BASE_SLIDERS)}</PanelSection>
+      <PanelSection title='Prism'>{sliders(PRISM_SLIDERS)}</PanelSection>
+      <PanelSection title='Text clearance'>{sliders(TEXT_SLIDERS)}</PanelSection>
+      <PanelSection title='Shadow'>{sliders(SHADOW_SLIDERS)}</PanelSection>
+      <PanelSection title='Light mode'>{sliders(LIGHT_MODE_SLIDERS)}</PanelSection>
+      <PanelSection title='Sheen'>{sliders(SHEEN_SLIDERS)}</PanelSection>
       <PanelSection title='Backlight'>{sliders(BACKLIGHT_SLIDERS)}</PanelSection>
       <PanelSection title='Glass'>{sliders(GLASS_SLIDERS)}</PanelSection>
       <PanelSection title='Bevel'>{sliders(BEVEL_SLIDERS)}</PanelSection>
