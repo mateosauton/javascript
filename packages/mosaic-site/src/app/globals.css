@@ -553,3 +553,21 @@ html[data-tile-open] [aria-label='Site'] {
     opacity: 0;
   }
 }
+
+.feature-glow {
+  background-image: radial-gradient(
+    140% 110% at 50% 115% in oklab,
+    oklch(0.948 0.03 62),
+    oklch(0.955 0.009 82) 50%,
+    oklch(0.952 0.011 245)
+  );
+}
+
+.dark .feature-glow {
+  background-image: radial-gradient(
+    140% 110% at 50% 115% in oklab,
+    oklch(0.222 0.026 55),
+    oklch(0.204 0.008 72) 50%,
+    oklch(0.198 0.011 250)
+  );
+}
