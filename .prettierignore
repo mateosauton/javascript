@@ -40,3 +40,4 @@ integration/expo-native/test/*.ts
 !integration/expo-native/test/remote-host.test.ts
 integration/expo-native/.verify/
 integration/expo-native/specs/explored/
+packages/mosaic/test/rsc/app/page.jsx

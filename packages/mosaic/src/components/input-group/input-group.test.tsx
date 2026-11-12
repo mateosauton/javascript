@@ -129,7 +129,7 @@ describe('Mosaic InputGroup', () => {
   });
 
   it.each(['Start', 'End'] as const)('provides button defaults inside %s', side => {
-    const Slot = InputGroup[side];
+    const Slot = { Start: InputGroup.Start, End: InputGroup.End }[side];
     render(
       <InputGroup.Root disabled>
         <Input aria-label='Value' />

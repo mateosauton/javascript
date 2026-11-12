@@ -9,8 +9,8 @@ import { colorVars, radiusVars, space } from '../../../tokens.stylex';
 import { Button } from '../../button';
 import { ButtonContext } from '../../button/button.context';
 import { Card } from '../../card';
-import type { DialogVariant } from '../dialog';
 import { Dialog } from '..';
+import type { DialogVariant } from '../dialog';
 import { styles as dialogStyles } from '../dialog.styles';
 
 afterEach(() => cleanup());
