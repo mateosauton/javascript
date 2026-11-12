@@ -15,7 +15,7 @@ import { Icon } from '../icon';
 import { Panel, usePanelTitle } from '../panel';
 import { Section } from '../section';
 import type { ProfileRootProps } from './profile';
-import { Profile } from './profile';
+import { Profile } from '.';
 
 const pageTitles: Record<string, string> = { account: 'Account', security: 'Security' };
 

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Button } from '../button';
 import { Field } from '../field';
 import { Input } from '../input';
-import { InputGroup } from './input-group';
+import { InputGroup } from '.';
 
 describe('Mosaic InputGroup', () => {
   it('exposes slots rather than a separate action component', () => {

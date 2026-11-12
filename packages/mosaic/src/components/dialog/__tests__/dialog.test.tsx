@@ -10,7 +10,7 @@ import { Button } from '../../button';
 import { ButtonContext } from '../../button/button.context';
 import { Card } from '../../card';
 import type { DialogVariant } from '../dialog';
-import { Dialog } from '../dialog';
+import { Dialog } from '..';
 import { styles as dialogStyles } from '../dialog.styles';
 
 afterEach(() => cleanup());

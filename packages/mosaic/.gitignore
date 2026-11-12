@@ -1,1 +1,4 @@
 .verify
+test/rsc/.next
+test/rsc/app/page.jsx
+test/rsc/next-env.d.ts
