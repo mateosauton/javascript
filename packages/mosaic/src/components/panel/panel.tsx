@@ -50,7 +50,7 @@ const Title = React.forwardRef<HTMLDivElement, PanelTitleProps>(function PanelTi
   return useRender({
     defaultTagName: 'div',
     render,
-    ref: pageTitleRef ? null : titleRef,
+    ref: [ref, panelTitleRef],
     enabled: !inProfilePage,
     props: {
       ...mergeStyleProps(themeProps('panel-title'), stylex.props(reset.base, styles.title, xstyle), {
