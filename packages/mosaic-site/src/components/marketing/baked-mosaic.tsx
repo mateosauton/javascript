@@ -1,8 +1,10 @@
 'use client';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 import bake from '@/components/marketing/mosaic-bake.json';
 import {
+  BAKE_BLUR,
   BAKE_EDGE_MAX,
   FALLBACK_PALETTE,
   type Palette,
@@ -14,9 +16,164 @@ import { type Mode, useMode } from '@/components/use-mode';
 
 export const MOSAIC_MASK_URL = `/mosaic/mask.webp?v=${bake.version}`;
 export const MOSAIC_SURFACE_URL = `/mosaic/surface.webp?v=${bake.version}`;
+export const MOSAIC_SKELETON_URL = `/mosaic/skeleton.webp?v=${bake.version}`;
+const MOSAIC_REVEAL_URL = `/mosaic/reveal.webp?v=${bake.version}`;
 
-const TEXTURES = [MOSAIC_SURFACE_URL, MOSAIC_MASK_URL];
-const neverRedraw = () => false;
+const TEXTURES = [MOSAIC_SURFACE_URL, MOSAIC_MASK_URL, MOSAIC_SKELETON_URL, MOSAIC_REVEAL_URL];
+
+type Reveal = {
+  duration: number;
+  from: number;
+  to: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  width: number;
+  amp: number;
+  film: number;
+  filmSpread: number;
+  saturation: number;
+  decay: number;
+  originX: number;
+  originY: number;
+  rings: number;
+  grow: number;
+  gapGlow: number;
+  grain: number;
+  grainScale: number;
+  blur: number;
+  linear: number;
+  angle: number;
+  edge: number;
+  scrub: number;
+  progress: number;
+};
+
+const REVEAL_DEFAULTS: Reveal = {
+  duration: 1900,
+  from: -0.02,
+  to: 1.2,
+  x1: 0.25,
+  y1: 0.45,
+  x2: 0.55,
+  y2: 0.95,
+  width: 190,
+  amp: 12,
+  film: 0.75,
+  filmSpread: 0.25,
+  saturation: 0.7,
+  decay: 1,
+  originX: -0.1,
+  originY: -0.1,
+  rings: 0.6,
+  grow: 1.4,
+  gapGlow: 0.55,
+  grain: 0.5,
+  grainScale: 0.004,
+  blur: 18,
+  linear: 0,
+  angle: 28,
+  edge: 0.6,
+  scrub: 0,
+  progress: 0.5,
+};
+
+const REVEAL_SLIDERS: Array<{ key: keyof Reveal; min: number; max: number; step: number }> = [
+  { key: 'scrub', min: 0, max: 1, step: 1 },
+  { key: 'progress', min: 0, max: 1, step: 0.005 },
+  { key: 'duration', min: 300, max: 4000, step: 50 },
+  { key: 'from', min: -1, max: 0.5, step: 0.01 },
+  { key: 'to', min: 0.5, max: 2, step: 0.01 },
+  { key: 'x1', min: 0, max: 1, step: 0.01 },
+  { key: 'y1', min: -0.5, max: 1.5, step: 0.01 },
+  { key: 'x2', min: 0, max: 1, step: 0.01 },
+  { key: 'y2', min: -0.5, max: 1.5, step: 0.01 },
+  { key: 'originX', min: -0.5, max: 1.5, step: 0.01 },
+  { key: 'originY', min: -0.5, max: 1.5, step: 0.01 },
+  { key: 'linear', min: 0, max: 1, step: 0.01 },
+  { key: 'angle', min: -180, max: 180, step: 1 },
+  { key: 'width', min: 10, max: 400, step: 1 },
+  { key: 'edge', min: 0.02, max: 2, step: 0.01 },
+  { key: 'amp', min: 0, max: 60, step: 0.5 },
+  { key: 'film', min: 0, max: 1.5, step: 0.01 },
+  { key: 'filmSpread', min: 0, max: 2, step: 0.01 },
+  { key: 'saturation', min: 0, max: 1, step: 0.01 },
+  { key: 'decay', min: 0, max: 4, step: 0.05 },
+  { key: 'rings', min: 0, max: 1.5, step: 0.01 },
+  { key: 'grow', min: 0, max: 3, step: 0.05 },
+  { key: 'gapGlow', min: 0, max: 1, step: 0.01 },
+  { key: 'grain', min: 0, max: 2, step: 0.01 },
+  { key: 'grainScale', min: 0.005, max: 0.2, step: 0.005 },
+  { key: 'blur', min: 0, max: 18, step: 0.5 },
+];
+
+const SWEEP_MS = 1800;
+const MIN_SWEEPS = 1.5;
+
+let ready = false;
+let loaded = false;
+const readyListeners = new Set<() => void>();
+function setReady() {
+  ready = true;
+  readyListeners.forEach(listener => listener());
+}
+function markReady() {
+  if (loaded) {
+    return;
+  }
+  loaded = true;
+  const sweep = document
+    .querySelector('.mosaic-skeleton')
+    ?.getAnimations({ subtree: true })
+    .find(animation => animation instanceof CSSAnimation && animation.animationName === 'mosaic-skeleton-sweep');
+  const elapsed = typeof sweep?.currentTime === 'number' ? sweep.currentTime : null;
+  if (elapsed === null || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setReady();
+    return;
+  }
+  window.setTimeout(setReady, Math.max(0, MIN_SWEEPS * SWEEP_MS - elapsed));
+}
+function replayReveal() {
+  ready = false;
+  readyListeners.forEach(listener => listener());
+  window.setTimeout(setReady, 600);
+}
+function subscribeReady(listener: () => void) {
+  readyListeners.add(listener);
+  return () => readyListeners.delete(listener);
+}
+function useMosaicReady() {
+  return React.useSyncExternalStore(
+    subscribeReady,
+    () => ready,
+    () => false,
+  );
+}
+
+const SKELETON_MASK = `url("${MOSAIC_SKELETON_URL}")`;
+
+export function MosaicSkeleton() {
+  const shown = !useMosaicReady();
+  return (
+    <div
+      aria-hidden='true'
+      className='mosaic-skeleton dark:bg-gray-850 bg-gray-150 pointer-events-none absolute -z-10 transition-opacity duration-300 ease-out'
+      style={{
+        left: `calc(50% + ${bake.offsetX}px)`,
+        top: `calc(50% + ${bake.offsetY}px)`,
+        width: bake.width,
+        height: bake.height,
+        maskImage: SKELETON_MASK,
+        WebkitMaskImage: SKELETON_MASK,
+        maskSize: '100% 100%',
+        WebkitMaskSize: '100% 100%',
+        opacity: shown ? 1 : 0,
+        ['--mosaic-sweep' as string]: `${SWEEP_MS}ms`,
+      }}
+    />
+  );
+}
 
 const source = `#version 300 es
 precision highp float;
@@ -27,6 +184,8 @@ out vec4 outColor;
 uniform mediump vec2 u_resolution;
 uniform sampler2D u_texture_0;
 uniform sampler2D u_texture_1;
+uniform sampler2D u_texture_2;
+uniform sampler2D u_texture_3;
 
 uniform float u_origin_x;
 uniform float u_origin_y;
@@ -61,10 +220,49 @@ uniform float u_prism_side;
 uniform float u_shadow_strength;
 uniform float u_shadow_height;
 uniform float u_shadow_soft;
+uniform float u_reveal;
+uniform float u_reveal_max;
+uniform float u_front;
+uniform float u_reveal_max_linear;
+uniform float u_linear_offset;
+uniform float u_linear;
+uniform float u_angle;
+uniform float u_edge;
+uniform float u_film_spread;
+uniform float u_grain;
+uniform float u_grain_scale;
+uniform float u_blur;
+uniform float u_saturation;
+uniform float u_decay;
+uniform float u_wave_x;
+uniform float u_wave_y;
+uniform float u_rings;
+uniform float u_grow;
+uniform float u_gap_glow;
+uniform float u_film_light;
+uniform float u_wave_width;
+uniform float u_wave_amp;
+uniform float u_wave_film;
+uniform vec3 u_skeleton_color;
 
 const float TAU = 6.28318530718;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+const vec3 MAGENTA = vec3(0.93, 0.55, 1.0);
+const vec3 VIOLET = vec3(0.66, 0.6, 1.0);
+const vec3 CYAN = vec3(0.6, 0.88, 1.0);
 const float EDGE_MAX = ${BAKE_EDGE_MAX}.0;
+const float BAKE_BLUR = ${BAKE_BLUR}.0;
+
+float hash1(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash1(i), hash1(i + vec2(1.0, 0.0)), u.x), mix(hash1(i + vec2(0.0, 1.0)), hash1(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 
 float edgeAt(vec2 point) {
   return clamp(texture(u_texture_0, point / u_resolution).a * 2.0 - 1.0, 0.0, 1.0);
@@ -80,10 +278,29 @@ float occluderAt(vec2 point) {
 }
 
 void main() {
-  vec2 uv = fragCoord / u_resolution;
+  vec2 center = vec2(u_wave_x, u_wave_y);
+  vec2 rel = fragCoord - center;
+  float radial = length(rel);
+  vec2 axis = vec2(cos(radians(u_angle)), sin(radians(u_angle)));
+  float along = dot(rel, axis) + u_linear_offset;
+  float dist = mix(radial, along, u_linear);
+  vec2 dir = normalize(mix(rel / max(radial, 0.001), axis, u_linear) + 0.00001);
+  float front = u_front * mix(u_reveal_max, u_reveal_max_linear, u_linear);
+  float energy = pow(max(1.0 - u_reveal, 0.0), u_decay);
+  float k = (dist - front) / (u_wave_width * (1.0 + u_grow * u_reveal));
+  float waving = step(0.0001, u_reveal) * (1.0 - step(0.9999, u_reveal));
+  float pulse = exp(-k * k * 2.5) * waving;
+  float trail = k < 0.0 ? sin(-k * 3.2) * exp(k * 0.55) * u_rings * waving : 0.0;
+  vec2 at = fragCoord - dir * (pulse + trail) * u_wave_amp * energy;
+  vec2 uv = at / u_resolution;
   vec4 surfaceData = texture(u_texture_0, uv);
   float alpha = texture(u_texture_1, uv).a;
-  vec2 scene = fragCoord + vec2(u_origin_x, u_origin_y);
+  vec3 baked = texture(u_texture_3, uv).rgb;
+  float skeletonAlpha = texture(u_texture_2, uv).a;
+  float frost = clamp(pulse * u_blur / BAKE_BLUR, 0.0, 1.0);
+  alpha = mix(alpha, baked.r, frost);
+  skeletonAlpha = mix(skeletonAlpha, baked.g, frost);
+  vec2 scene = at + vec2(u_origin_x, u_origin_y);
   vec3 toLight = normalize(vec3(u_light_x * u_scene_w, -u_light_y, u_light_z) - vec3(scene, 0.0));
   vec3 color = vec3(0.0);
 
@@ -117,7 +334,7 @@ void main() {
 
     if (u_prism > 0.0) {
       float across = clamp(edge / max(u_prism_width, 0.5), 0.0, 1.0);
-      vec2 inward = vec2(edgeAt(fragCoord + vec2(1.0, 0.0)) - edgeAt(fragCoord - vec2(1.0, 0.0)), edgeAt(fragCoord + vec2(0.0, 1.0)) - edgeAt(fragCoord - vec2(0.0, 1.0)));
+      vec2 inward = vec2(edgeAt(at + vec2(1.0, 0.0)) - edgeAt(at - vec2(1.0, 0.0)), edgeAt(at + vec2(0.0, 1.0)) - edgeAt(at - vec2(0.0, 1.0)));
       float away = clamp(dot(normalize(inward + 0.00001), normalize(toLight.xy + 0.0001)), 0.0, 1.0);
       float side = mix(away * away, 1.0, u_prism_side);
       float band = 4.0 * across * (1.0 - across);
@@ -130,10 +347,34 @@ void main() {
   float shadow = 0.0;
   if (u_shadow_strength > 0.0 && alpha < 1.0) {
     vec2 reach = toLight.xy / max(toLight.z, 0.05) * u_shadow_height;
-    shadow = occluderAt(fragCoord + reach) * u_shadow_strength;
+    shadow = occluderAt(at + reach) * u_shadow_strength;
   }
 
-  outColor = vec4(color * alpha, alpha + shadow * (1.0 - alpha));
+  vec4 glass = vec4(color * alpha, alpha + shadow * (1.0 - alpha));
+  vec4 skeleton = vec4(u_skeleton_color * skeletonAlpha, skeletonAlpha);
+  float revealed = u_reveal >= 0.9999 ? 1.0 : smoothstep(u_edge, -u_edge, k) * step(0.0001, u_reveal);
+  outColor = mix(skeleton, glass, revealed);
+  if (pulse > 0.001) {
+    vec2 drift = vec2(valueNoise(fragCoord * u_grain_scale + 7.0), valueNoise(fragCoord * u_grain_scale + 31.0)) - 0.5;
+    float hue = dot(rel, vec2(-axis.y, axis.x)) / 900.0 + k * u_film_spread + drift.x * u_grain + u_reveal * 0.4;
+    float t = fract(hue);
+    vec3 film = t < 0.333 ? mix(MAGENTA, VIOLET, t * 3.0) : t < 0.666 ? mix(VIOLET, CYAN, t * 3.0 - 1.0) : mix(CYAN, MAGENTA, t * 3.0 - 2.0);
+    float core = exp(-k * k * 6.0);
+    film = mix(film, vec3(1.0), core * 0.6);
+    film = mix(vec3(dot(film, vec3(0.333))), film, u_saturation);
+    float glow = waving * exp(-k * k * 1.2) * u_wave_film * mix(1.0, energy, 0.6);
+    float halo = baked.b;
+    float coverage = max(max(alpha, skeletonAlpha), halo * u_gap_glow);
+    float amount = clamp(glow * coverage, 0.0, 1.0);
+    if (u_film_light > 0.5) {
+      outColor.rgb = mix(outColor.rgb, film * mix(1.0, outColor.a, 0.0), amount);
+      outColor.a = mix(outColor.a, 1.0, amount);
+    } else {
+      outColor.rgb += film * amount;
+      outColor.a = max(outColor.a, amount);
+    }
+  }
+
 }
 `;
 
@@ -143,7 +384,21 @@ function buildUniforms(
   origin: [number, number],
   center: [number, number],
   sceneWidth: number,
+  reveal: Reveal,
 ): Uniforms {
+  const cx = reveal.originX * bake.width;
+  const cy = reveal.originY * bake.height;
+  const corners = [
+    [-cx, -cy],
+    [bake.width - cx, -cy],
+    [-cx, bake.height - cy],
+    [bake.width - cx, bake.height - cy],
+  ];
+  const revealMax = Math.max(...corners.map(([x, y]) => Math.hypot(x, y))) + reveal.width * 1.5;
+  const angle = (reveal.angle * Math.PI) / 180;
+  const projections = corners.map(([x, y]) => x * Math.cos(angle) + y * Math.sin(angle));
+  const linearOffset = -Math.min(...projections);
+  const linearMax = Math.max(...projections) + linearOffset + reveal.width * 1.5;
   const s = bake.settings as Record<string, number>;
   const light = mode === 'light';
   const f = (value: number) => ({ type: 'uniform1f', value }) as const;
@@ -182,22 +437,190 @@ function buildUniforms(
     u_shadow_strength: f(s.shadowStrength * (light ? 1 : s.dmShadow)),
     u_shadow_height: f(s.shadowHeight),
     u_shadow_soft: f(s.shadowSoft),
+    u_reveal: f(0),
+    u_front: f(0),
+    u_skeleton_color: v(palette.tileLow),
+    u_reveal_max: f(revealMax),
+    u_reveal_max_linear: f(linearMax),
+    u_linear_offset: f(linearOffset),
+    u_linear: f(reveal.linear),
+    u_angle: f(reveal.angle),
+    u_edge: f(reveal.edge),
+    u_film_spread: f(reveal.filmSpread),
+    u_grain: f(reveal.grain),
+    u_grain_scale: f(reveal.grainScale),
+    u_blur: f(reveal.blur),
+    u_saturation: f(reveal.saturation),
+    u_decay: f(reveal.decay),
+    u_wave_x: f(cx),
+    u_wave_y: f(cy),
+    u_rings: f(reveal.rings),
+    u_grow: f(reveal.grow),
+    u_gap_glow: f(reveal.gapGlow),
+    u_wave_width: f(reveal.width),
+    u_wave_amp: f(reveal.amp),
+    u_wave_film: f(reveal.film * (light ? 1 : 0.45)),
+    u_film_light: f(light ? 1 : 0),
   };
+}
+
+function parseRgb(value: string): [number, number, number] | null {
+  const match = value.match(/rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/);
+  return match ? [Number(match[1]) / 255, Number(match[2]) / 255, Number(match[3]) / 255] : null;
+}
+
+function cubicBezier(x1: number, y1: number, x2: number, y2: number, x: number) {
+  const curve = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  let lo = 0;
+  let hi = 1;
+  let t = x;
+  for (let i = 0; i < 24; i += 1) {
+    t = (lo + hi) / 2;
+    if (curve(x1, x2, t) < x) {
+      lo = t;
+    } else {
+      hi = t;
+    }
+  }
+  return curve(y1, y2, t);
+}
+
+function revealTime(start: number | null, reveal: Reveal) {
+  if (reveal.scrub) {
+    return reveal.progress;
+  }
+  if (start === null) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, (performance.now() - start) / reveal.duration));
+}
+
+function revealFront(time: number, reveal: Reveal) {
+  const eased = cubicBezier(reveal.x1, reveal.y1, reveal.x2, reveal.y2, time);
+  return reveal.from + (reveal.to - reveal.from) * eased;
+}
+
+const subscribeNothing = () => () => {};
+
+function RevealPanel({ reveal, onChange }: { reveal: Reveal; onChange: (next: Reveal) => void }) {
+  const [open, setOpen] = React.useState(true);
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <div className='fixed bottom-4 left-4 z-50 flex w-72 flex-col gap-1.5 rounded-lg border border-neutral-200 bg-white/90 p-3 text-left text-xs text-neutral-800 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-neutral-200'>
+      <button
+        type='button'
+        className='flex items-center justify-between font-medium'
+        onClick={() => setOpen(value => !value)}
+      >
+        Reveal
+        <span>{open ? '−' : '+'}</span>
+      </button>
+      {open
+        ? REVEAL_SLIDERS.map(({ key, min, max, step }) => (
+            <label
+              key={key}
+              className='grid grid-cols-[4.5rem_1fr_2.75rem] items-center gap-2'
+            >
+              <span>{key}</span>
+              <input
+                type='range'
+                min={min}
+                max={max}
+                step={step}
+                value={reveal[key]}
+                onChange={event => onChange({ ...reveal, [key]: Number(event.target.value) })}
+              />
+              <span className='text-right tabular-nums'>{reveal[key]}</span>
+            </label>
+          ))
+        : null}
+      <div className='grid grid-cols-3 gap-2'>
+        <button
+          type='button'
+          className='rounded border border-neutral-300 py-1 dark:border-neutral-700'
+          onClick={() => {
+            onChange({ ...reveal, scrub: 0 });
+            replayReveal();
+          }}
+        >
+          Replay
+        </button>
+        <button
+          type='button'
+          className='rounded border border-neutral-300 py-1 dark:border-neutral-700'
+          onClick={() => {
+            void navigator.clipboard.writeText(JSON.stringify(reveal, null, 2)).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1200);
+            });
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+        <button
+          type='button'
+          className='rounded border border-neutral-300 py-1 dark:border-neutral-700'
+          onClick={() => onChange(REVEAL_DEFAULTS)}
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function BakedMosaic() {
   const sceneRef = React.useRef<HTMLDivElement>(null);
   const { height, focus, width } = useSceneLayout(sceneRef);
+  const isReady = useMosaicReady();
   const mode = useMode();
   const palette = React.useMemo(() => readPalette(mode) ?? FALLBACK_PALETTE, [mode]);
   const settings = bake.settings as Record<string, number>;
   const origin: [number, number] = [focus.x + bake.offsetX, focus.y + bake.offsetY];
   const center: [number, number] = [focus.x, focus.y + settings.logoSize * settings.logoY];
-  const uniforms = React.useMemo(
-    () => buildUniforms(palette, mode, origin, center, width),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [palette, mode, origin[0], origin[1], center[0], center[1], width],
+  const skeletonColorRef = React.useRef<[number, number, number]>(palette.tileLow);
+  React.useEffect(() => {
+    const element = document.querySelector('.mosaic-skeleton');
+    const parsed = element ? parseRgb(getComputedStyle(element).backgroundColor) : null;
+    skeletonColorRef.current = parsed ?? palette.tileLow;
+  }, [mode, palette]);
+  const [reveal, setReveal] = React.useState(REVEAL_DEFAULTS);
+  const mounted = React.useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
   );
+  React.useEffect(() => {
+    if (reveal.scrub && !ready) {
+      setReady();
+    }
+  }, [reveal.scrub]);
+  const uniforms = React.useMemo(
+    () => buildUniforms(palette, mode, origin, center, width, reveal),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [palette, mode, origin[0], origin[1], center[0], center[1], width, reveal],
+  );
+  const startRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (!isReady) {
+      startRef.current = null;
+      return;
+    }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    startRef.current = reduced ? -Infinity : performance.now();
+  }, [isReady]);
+  const liveUniforms = React.useCallback(
+    (): Uniforms => ({
+      u_reveal: { type: 'uniform1f', value: revealTime(startRef.current, reveal) },
+      u_front: { type: 'uniform1f', value: revealFront(revealTime(startRef.current, reveal), reveal) },
+      u_skeleton_color: { type: 'uniform3f', value: skeletonColorRef.current },
+    }),
+    [reveal],
+  );
+  const shouldRender = React.useCallback(() => {
+    const start = startRef.current;
+    return !reveal.scrub && start !== null && start !== -Infinity && performance.now() - start < reveal.duration + 100;
+  }, [reveal]);
   return (
     <div
       ref={sceneRef}
@@ -214,11 +637,22 @@ export function BakedMosaic() {
             source={source}
             uniforms={uniforms}
             textures={TEXTURES}
-            shouldRender={neverRedraw}
+            liveUniforms={liveUniforms}
+            shouldRender={shouldRender}
+            onRender={markReady}
             premultiplied
           />
         </div>
       ) : null}
+      {process.env.NODE_ENV === 'development' && mounted
+        ? createPortal(
+            <RevealPanel
+              reveal={reveal}
+              onChange={setReveal}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

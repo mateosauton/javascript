@@ -65,6 +65,7 @@ uniform float u_bevel_shape;
 uniform float u_bevel_height;
 uniform int u_view;
 uniform int u_bake;
+uniform float u_skeleton_grout;
 uniform float u_clay_tilt;
 uniform float u_clay_thickness;
 uniform float u_clay_wobble;
@@ -730,6 +731,10 @@ void main() {
   float covered = step(0.0001, alpha);
   if (u_bake == 1) {
     outColor = vec4(1.0, 1.0, 1.0, alpha);
+  } else if (u_bake == 3) {
+    float skeletonEdge = groutHalf + 0.5 * u_skeleton_grout;
+    float skeleton = smoothstep(skeletonEdge - 0.5, skeletonEdge + 0.5, e.x) * clamp(vignette * u_cover, 0.0, 1.0);
+    outColor = vec4(1.0, 1.0, 1.0, skeleton);
   } else if (u_bake == 2) {
     float edgeDistance = clamp((e.x - groutHalf) / BAKE_EDGE_MAX, 0.0, 1.0);
     float packedTone = (floor(tileToneT(tileId, anchor) * 110.0 + 0.5) + step(0.5, logoAmount) * 145.0) / 255.0;
@@ -767,6 +772,7 @@ type Settings = {
   textClear: number;
   textPad: number;
   underlay: number;
+  skeletonGrout: number;
   lmBase: number;
   dmBase: number;
   prism: number;
@@ -872,6 +878,7 @@ const DEFAULTS: Settings = {
   textClear: 1,
   textPad: 24,
   underlay: 0,
+  skeletonGrout: 4,
   lmBase: 0.3,
   dmBase: 0.33,
   prism: 0.13,
@@ -992,6 +999,8 @@ const VIGNETTE_SLIDERS: Slider[] = [
   { key: 'vigTop', min: 0, max: 300, step: 5 },
   { key: 'vigBottom', min: 0, max: 900, step: 5 },
 ];
+
+const SKELETON_SLIDERS: Slider[] = [{ key: 'skeletonGrout', min: 0, max: 16, step: 0.5 }];
 
 const BASE_SLIDERS: Slider[] = [
   { key: 'lmBase', min: 0, max: 1, step: 0.01 },
@@ -1179,6 +1188,7 @@ function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode:
     u_bevel_height: { type: 'uniform1f', value: settings.bevelHeight },
     u_view: { type: 'uniform1i', value: settings.view },
     u_bake: { type: 'uniform1i', value: 0 },
+    u_skeleton_grout: { type: 'uniform1f', value: settings.skeletonGrout },
     u_clay_tilt: { type: 'uniform1f', value: settings.clayTilt },
     u_clay_thickness: { type: 'uniform1f', value: settings.clayThickness },
     u_clay_wobble: { type: 'uniform1f', value: settings.clayWobble },
@@ -1343,6 +1353,7 @@ function Panel({
       />
       <PanelSection title='Frame'>{sliders(VIGNETTE_SLIDERS)}</PanelSection>
       <PanelSection title='Light'>{sliders(LIGHT_SLIDERS)}</PanelSection>
+      <PanelSection title='Skeleton'>{sliders(SKELETON_SLIDERS)}</PanelSection>
       <PanelSection title='Base color'>{sliders(BASE_SLIDERS)}</PanelSection>
       <PanelSection title='Prism'>{sliders(PRISM_SLIDERS)}</PanelSection>
       <PanelSection title='Text clearance'>{sliders(TEXT_SLIDERS)}</PanelSection>

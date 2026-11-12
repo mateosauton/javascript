@@ -7,14 +7,17 @@ import { useMode } from '@/components/use-mode';
 import { cn } from '@/lib/utils';
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const { setTheme } = useTheme();
+  const { setTheme, systemTheme } = useTheme();
   const dark = useMode() === 'dark';
+  const target = dark ? 'light' : 'dark';
+  const label = `Switch to ${target} mode${target === systemTheme ? ' (system default)' : ''}`;
 
   return (
     <button
       type='button'
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      onClick={() => setTheme(dark ? 'light' : 'dark')}
+      aria-label={label}
+      title={label}
+      onClick={() => setTheme(target === systemTheme ? 'system' : target)}
       className={cn(
         'border-foreground/15 text-foreground hover:border-foreground/40 flex size-9 items-center justify-center rounded-full border transition-colors',
         className,

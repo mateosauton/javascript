@@ -14,6 +14,8 @@ const TRAIL_ENABLED = false;
 const TRAIL_LIFE = 260;
 const EYEBROW_PAD = 8;
 
+const TOP_FADE = 'linear-gradient(to bottom, transparent, black 20rem)';
+
 const LOOKS: Record<Mode, GridLook> = {
   light: {
     color: 'oklch(0.6 0.15 255)',
@@ -24,6 +26,7 @@ const LOOKS: Record<Mode, GridLook> = {
     mask: [
       'radial-gradient(ellipse 55% 65% at 50% 32%, black 25%, transparent 100%)',
       'radial-gradient(ellipse 22rem 18rem at 50% 38%, rgb(0 0 0 / 0.3) 0%, black 100%)',
+      TOP_FADE,
     ].join(', '),
   },
   dark: {
@@ -32,7 +35,7 @@ const LOOKS: Record<Mode, GridLook> = {
     minor: 3,
     trail: '--color-purple-400',
     trailAlpha: 0.55,
-    mask: 'radial-gradient(ellipse 65% 75% at 50% 34%, black 40%, transparent 100%)',
+    mask: ['radial-gradient(ellipse 65% 75% at 50% 34%, black 40%, transparent 100%)', TOP_FADE].join(', '),
   },
 };
 

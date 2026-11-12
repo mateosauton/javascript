@@ -2,7 +2,9 @@
 import clsx from 'clsx';
 import * as React from 'react';
 
-type Feature = { title: string; description: string; icon: React.ReactNode };
+import { PrinciplesScene, type SceneId } from '@/components/marketing/principles-scene';
+
+type Feature = { id: SceneId; title: string; description: string; icon: React.ReactNode };
 
 const icon = (...paths: string[]) => (
   <svg
@@ -26,6 +28,7 @@ const icon = (...paths: string[]) => (
 
 const FEATURES: Feature[] = [
   {
+    id: 'composable',
     title: 'Composable',
     description: 'Rearrange, restyle and replace any part of a component without forking it.',
     icon: icon(
@@ -36,6 +39,7 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    id: 'agent',
     title: 'Agent-native',
     description: 'A plain model, controller and view split that coding agents can read, extend and test.',
     icon: icon(
@@ -43,6 +47,7 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    id: 'theme',
     title: 'Themeable',
     description: 'Tokens, CSS slots and themes restyle every component, from one avatar to a whole account.',
     icon: icon(
@@ -53,6 +58,7 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    id: 'clerk',
     title: 'Powered by Clerk',
     description: 'Sessions, organizations and billing are wired to Clerk, so the UI is ready for production.',
     icon: icon(
@@ -66,12 +72,14 @@ export function FeatureTabs() {
   const [active, setActive] = React.useState(0);
 
   return (
-    <div className='mt-6'>
+    <div className='md:mt-16'>
       <div
         role='tabpanel'
         aria-label={FEATURES[active].title}
-        className='relative aspect-[1216/600] w-full overflow-hidden rounded-md bg-gray-100 max-md:hidden lg:aspect-auto lg:h-[600px] dark:bg-gray-900'
-      />
+        className='relative aspect-[1216/480] w-full rounded-md bg-gray-100 max-md:hidden lg:aspect-auto lg:h-[480px] dark:bg-gray-900'
+      >
+        <PrinciplesScene scene={FEATURES[active].id} />
+      </div>
       <div
         role='tablist'
         aria-label='Principles'
@@ -93,8 +101,10 @@ export function FeatureTabs() {
             >
               <span className='grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1'>
                 <span className='mt-0.5 block size-4 text-gray-950 dark:text-white'>{item.icon}</span>
-                <span className='label-3 text-gray-950 dark:text-white'>{item.title}</span>
-                <span className='body-3 col-start-2 text-gray-600 dark:text-gray-400'>{item.description}</span>
+                <span className='label-3 text-pretty text-gray-950 dark:text-white'>{item.title}</span>
+                <span className='body-3 col-start-2 text-pretty text-gray-600 dark:text-gray-400'>
+                  {item.description}
+                </span>
               </span>
             </button>
           );

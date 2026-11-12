@@ -111,11 +111,3 @@ export const GLASS_EDGES = clsx(
   'after:absolute after:inset-0 after:-z-10 after:rounded-[inherit] after:border after:border-transparent',
   'after:[background:var(--glass-border)] after:[mask:linear-gradient(#fff_0_0)_padding-box_exclude,linear-gradient(#fff_0_0)]',
 );
-
-// Fallback for browsers without text-box: empty table pseudo-elements pull the box in by the
-// font's own trims (see TRIM).
-export const trimToCapHeight = clsx(
-  'block [text-box:trim-both_cap_alphabetic]',
-  'not-supports-[text-box:trim-both_cap_alphabetic]:before:-mb-[calc(var(--trim-top)*1em)] not-supports-[text-box:trim-both_cap_alphabetic]:before:table',
-  'not-supports-[text-box:trim-both_cap_alphabetic]:after:-mt-[calc(var(--trim-bottom)*1em)] not-supports-[text-box:trim-both_cap_alphabetic]:after:table',
-);

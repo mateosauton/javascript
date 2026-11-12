@@ -7,14 +7,7 @@ import { type CSSProperties, type RefObject, useEffect, useId, useReducer, useRe
 import { useFocusVisible } from 'react-aria';
 import { Button } from 'react-aria-components';
 
-import {
-  GLASS_EDGES,
-  GLASS_PRISM,
-  GLASS_SCHEME,
-  glassStyle,
-  type GlassTone,
-  trimToCapHeight,
-} from '@/components/glass';
+import { GLASS_EDGES, GLASS_PRISM, GLASS_SCHEME, glassStyle, type GlassTone } from '@/components/glass';
 
 import { AGENT_BRAND, BUBBLE_SHADOW_SM, CLUSTER_WIDE } from './agent-brand';
 import { CopyCheckIcon } from './copy-check-icon';
@@ -26,13 +19,6 @@ const BUBBLE = BAR_HEIGHT - 2 * PAD;
 
 const ICON_TRAVEL = 12;
 const ICON_SQUASH = { scaleX: 0.88, scaleY: 1.04 };
-
-// In em at body-3's line height. Top: ascent − cap height + half-leading; bottom: descent +
-// half-leading. Recompute if the font, size or line height changes.
-//   Söhne Mono: ascent 1.04, descent 0.29, cap height 0.718
-//   Sans (Geist Numbers line metrics, Suisse glyphs): ascent 0.92, descent 0.22, cap height 0.725
-const TRIM_MONO = { '--trim-top': '0.4262', '--trim-bottom': '0.3942' } as CSSProperties;
-const TRIM_SANS = { '--trim-top': '0.3942', '--trim-bottom': '0.4192' } as CSSProperties;
 
 const COMPRESS = { stiffness: 1406, damping: 78 };
 const RELEASE = { visualDuration: 0.144, bounce: 0.18 };
@@ -154,12 +140,7 @@ function PromptScroller({ scrollerRef: ref, children }: { scrollerRef: RefObject
       // inside the button.
       tabIndex={-1}
     >
-      <span
-        className={trimToCapHeight}
-        style={TRIM_MONO}
-      >
-        {children}
-      </span>
+      <span className='trim-cap'>{children}</span>
     </motion.span>
   );
 }
@@ -284,12 +265,7 @@ export function PromptBar({
                     aria-hidden
                     className='code-1 text-(--glass-ink) flex items-center opacity-50'
                   >
-                    <span
-                      className={trimToCapHeight}
-                      style={TRIM_MONO}
-                    >
-                      $
-                    </span>
+                    <span className='trim-cap'>$</span>
                   </span>
                 )}
                 <span
@@ -344,12 +320,7 @@ export function PromptBar({
                       className='-my-1 px-4 py-1 will-change-[opacity,filter] [grid-area:1/1]'
                       style={{ ...fade(!engaged), transition: `opacity ${EASE.fade}, filter ${EASE.fade}` }}
                     >
-                      <span
-                        className={trimToCapHeight}
-                        style={TRIM_SANS}
-                      >
-                        Copy {noun}
-                      </span>
+                      <span className='trim-cap'>Copy {noun}</span>
                     </span>
                   </span>
                   <span

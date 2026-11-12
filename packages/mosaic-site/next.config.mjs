@@ -11,6 +11,7 @@ const swingsetSrc = resolve(__dirname, '../swingset/src');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: { NEXT_PUBLIC_MOSAIC_VERSION: require('../mosaic/package.json').version },
   webpack(config) {
     const excludeRawQuery = rules => {
       for (const rule of rules) {

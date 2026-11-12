@@ -1,5 +1,5 @@
 {
-  "version": 1794503188198,
+  "version": 1794511496695,
   "scale": 2,
   "width": 786,
   "height": 593,
@@ -34,6 +34,7 @@
     "textClear": 1,
     "textPad": 24,
     "underlay": 0,
+    "skeletonGrout": 4,
     "lmBase": 0.3,
     "dmBase": 0.33,
     "prism": 0.13,

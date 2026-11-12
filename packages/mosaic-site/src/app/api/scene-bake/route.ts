@@ -12,7 +12,7 @@ type Sharp = (
 const ROOT = process.cwd();
 const PUBLIC_DIR = join(ROOT, 'public', 'mosaic');
 const META_FILE = join(ROOT, 'src', 'components', 'marketing', 'mosaic-bake.json');
-const FILES = new Set(['mask.webp', 'surface.webp', 'meta']);
+const FILES = new Set(['mask.webp', 'surface.webp', 'skeleton.webp', 'reveal.webp', 'meta']);
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   const target = join(PUBLIC_DIR, file);
   const bytes = file.endsWith('.png')
     ? encodePng(data, width, height, channels)
-    : await encodeWebp(data, width, height, channels, file === 'mask.webp');
+    : await encodeWebp(data, width, height, channels, file === 'mask.webp' || file === 'skeleton.webp');
   await writeFile(target, bytes);
   return NextResponse.json({ file: target, bytes: bytes.length });
 }

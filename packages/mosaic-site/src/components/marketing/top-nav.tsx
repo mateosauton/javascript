@@ -6,6 +6,7 @@ import * as React from 'react';
 import { OptionPicker, ThemeIcon } from '@/components/gallery/option-picker';
 import { ThemeStyles } from '@/components/gallery/theme';
 import { ClerkUILogo } from '@/components/marketing/clerk-logo';
+import { VersionBadge } from '@/components/marketing/version-badge';
 import { ModeSwitch } from '@/components/theme-toggle';
 import { useMosaicTheme } from '@/components/use-mosaic-theme';
 import { type ThemeId, THEMES } from '@/lib/components/theme';
@@ -23,17 +24,23 @@ export function TopNav() {
     }
   }, [theme, pathname]);
   const docs = pathname !== '/';
+  if (pathname === '/') {
+    return <ThemeStyles />;
+  }
   return (
     <>
       <ThemeStyles />
       <header className='border-foreground/10 bg-background/80 sticky top-0 z-40 flex h-14 items-center gap-6 border-b px-4 backdrop-blur md:px-6'>
-        <Link
-          href='/'
-          aria-label='Clerk UI home'
-          className='text-foreground flex shrink-0 items-center'
-        >
-          <ClerkUILogo className='h-4' />
-        </Link>
+        <div className='flex shrink-0 items-center gap-2'>
+          <Link
+            href='/'
+            aria-label='Clerk UI home'
+            className='text-foreground flex items-center'
+          >
+            <ClerkUILogo className='h-4' />
+          </Link>
+          <VersionBadge />
+        </div>
         <nav
           aria-label='Primary'
           className='flex items-center gap-1'

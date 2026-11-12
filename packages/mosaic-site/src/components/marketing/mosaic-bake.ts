@@ -1,7 +1,9 @@
+import { BAKE_BLUR, BAKE_HALO } from '@/components/marketing/mosaic-shared';
 import type { Uniforms } from '@/components/shader';
 
 export const BAKE_SCALE = 2;
 const PAD = 48;
+const REVEAL_DOWNSAMPLE = 4;
 const MARGIN = 400;
 
 const bakeVertexSource = `#version 300 es
@@ -148,6 +150,78 @@ function crop({ data, width }: Pass, box: ReturnType<typeof bounds>, pick: numbe
   return { data: out, width: cropWidth, height: cropHeight };
 }
 
+function boxBlur(source: Float32Array, width: number, height: number, radius: number) {
+  const out = new Float32Array(source.length);
+  const temp = new Float32Array(source.length);
+  const r = Math.max(1, Math.round(radius));
+  const span = r * 2 + 1;
+  for (let y = 0; y < height; y += 1) {
+    let sum = 0;
+    for (let x = -r; x <= r; x += 1) {
+      sum += source[y * width + Math.min(width - 1, Math.max(0, x))];
+    }
+    for (let x = 0; x < width; x += 1) {
+      temp[y * width + x] = sum / span;
+      sum += source[y * width + Math.min(width - 1, x + r + 1)] - source[y * width + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < width; x += 1) {
+    let sum = 0;
+    for (let y = -r; y <= r; y += 1) {
+      sum += temp[Math.min(height - 1, Math.max(0, y)) * width + x];
+    }
+    for (let y = 0; y < height; y += 1) {
+      out[y * width + x] = sum / span;
+      sum += temp[Math.min(height - 1, y + r + 1) * width + x] - temp[Math.max(0, y - r) * width + x];
+    }
+  }
+  return out;
+}
+
+function gaussian(source: Float32Array, width: number, height: number, sigma: number) {
+  const radius = Math.sqrt((12 * sigma * sigma) / 3 + 1) / 2;
+  let result = source;
+  for (let pass = 0; pass < 3; pass += 1) {
+    result = boxBlur(result, width, height, radius);
+  }
+  return result;
+}
+
+function channel(image: { data: Uint8Array }, stride: number, offset: number) {
+  const values = new Float32Array(image.data.length / stride);
+  for (let i = 0; i < values.length; i += 1) {
+    values[i] = image.data[i * stride + offset] / 255;
+  }
+  return values;
+}
+
+function revealTextures(
+  mask: { data: Uint8Array; width: number; height: number },
+  skeleton: { data: Uint8Array; width: number; height: number },
+) {
+  const { width, height } = skeleton;
+  const coverage = channel(mask, 2, 1);
+  const skeletonCoverage = channel(skeleton, 2, 1);
+  const blurredMask = gaussian(coverage, width, height, (BAKE_BLUR * BAKE_SCALE) / 2.5);
+  const blurredSkeleton = gaussian(skeletonCoverage, width, height, (BAKE_BLUR * BAKE_SCALE) / 2.5);
+  const halo = gaussian(skeletonCoverage, width, height, (BAKE_HALO * BAKE_SCALE) / 2.5);
+  const small = REVEAL_DOWNSAMPLE;
+  const outWidth = Math.ceil(width / small);
+  const outHeight = Math.ceil(height / small);
+  const data = new Uint8Array(outWidth * outHeight * 3);
+  for (let y = 0; y < outHeight; y += 1) {
+    for (let x = 0; x < outWidth; x += 1) {
+      const from =
+        Math.min(height - 1, y * small + (small >> 1)) * width + Math.min(width - 1, x * small + (small >> 1));
+      const to = (y * outWidth + x) * 3;
+      data[to] = Math.round(blurredMask[from] * 255);
+      data[to + 1] = Math.round(blurredSkeleton[from] * 255);
+      data[to + 2] = Math.round(halo[from] * 255);
+    }
+  }
+  return { data, width: outWidth, height: outHeight };
+}
+
 async function upload(file: string, image: { data: Uint8Array; width: number; height: number }, channels: number) {
   const params = new URLSearchParams({
     file,
@@ -189,9 +263,17 @@ export async function bakeScene({
     width,
     height,
   );
+  const maskImage = crop(mask, box, [0, 3]);
+  const skeletonImage = crop(
+    renderPass(source, { ...view, u_bake: { type: 'uniform1i', value: 3 } }, width, height),
+    box,
+    [0, 3],
+  );
   const written = [
-    await upload('mask.webp', crop(mask, box, [0, 3]), 2),
+    await upload('mask.webp', maskImage, 2),
     await upload('surface.webp', crop(surface, box, [0, 1, 2, 3]), 4),
+    await upload('skeleton.webp', skeletonImage, 2),
+    await upload('reveal.webp', revealTextures(maskImage, skeletonImage), 3),
   ];
   const meta = {
     version: Date.now(),

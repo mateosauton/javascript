@@ -12,6 +12,8 @@
   --ink-subtle: var(--color-gray-700);
   --background-subtle: var(--color-gray-100);
   --border: var(--color-gray-150);
+  --trim-cap-top: 0.3623;
+  --trim-cap-bottom: 0.3571;
 }
 
 .dark {
@@ -371,6 +373,8 @@ body {
   letter-spacing: -0.01em;
   font-feature-settings: 'zero';
   font-variant-ligatures: none;
+  --trim-cap-top: 0.355;
+  --trim-cap-bottom: 0.355;
 }
 
 @utility code-inline {
@@ -381,6 +385,8 @@ body {
   letter-spacing: -0.01em;
   font-feature-settings: 'zero';
   font-variant-ligatures: none;
+  --trim-cap-top: 0.355;
+  --trim-cap-bottom: 0.355;
 }
 
 @utility tag-1 {
@@ -443,6 +449,36 @@ body {
   will-change: auto !important;
 }
 
+@utility rounded-squircle-md {
+  border-radius: 0.375rem;
+
+  @supports (corner-shape: superellipse(2)) {
+    border-radius: 0.625rem;
+    corner-shape: superellipse(2);
+  }
+}
+
+@utility trim-cap {
+  display: block;
+  text-box: trim-both cap alphabetic;
+
+  @supports not (text-box: trim-both cap alphabetic) {
+    &::before,
+    &::after {
+      content: '';
+      display: table;
+    }
+
+    &::before {
+      margin-bottom: calc(var(--trim-cap-top) * 1em - 0.5lh);
+    }
+
+    &::after {
+      margin-top: calc(var(--trim-cap-bottom) * 1em - 0.5lh);
+    }
+  }
+}
+
 @utility outline-focus {
   outline: 2px solid var(--color-gray-950);
   outline-offset: 2px;
@@ -482,5 +518,38 @@ html[data-tile-open] [aria-label='Site'] {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+.mosaic-skeleton {
+  overflow: hidden;
+}
+
+.mosaic-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 55%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.85) 50%, transparent);
+  mix-blend-mode: soft-light;
+  transform: translateX(-130%) skewX(-20deg);
+  animation: mosaic-skeleton-sweep var(--mosaic-sweep, 1.8s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.dark .mosaic-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06) 50%, transparent);
+  mix-blend-mode: plus-lighter;
+}
+
+@keyframes mosaic-skeleton-sweep {
+  to {
+    transform: translateX(310%) skewX(-20deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-skeleton::after {
+    animation: none;
+    opacity: 0;
   }
 }

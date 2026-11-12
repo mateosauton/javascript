@@ -4,6 +4,8 @@ import * as React from 'react';
 import type { Mode } from '@/components/use-mode';
 
 export const BAKE_EDGE_MAX = 32;
+export const BAKE_BLUR = 18;
+export const BAKE_HALO = 48;
 
 export type Focus = { x: number; y: number };
 export type TextBox = [number, number, number, number];
