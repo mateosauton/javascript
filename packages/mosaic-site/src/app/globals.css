@@ -564,45 +564,45 @@ html[data-tile-open] [aria-label='Site'] {
   --sky-time: 0;
   --sky-dawn: radial-gradient(
     140% 110% at 50% 115% in oklab,
-    oklch(0.955 0.02 75),
-    oklch(0.957 0.007 85) 50%,
-    oklch(0.948 0.016 262)
+    oklch(0.955 0.026 65),
+    oklch(0.958 0.01 80) 50%,
+    oklch(0.952 0.012 250)
   );
   --sky-midday: radial-gradient(
-    140% 110% at 50% 115% in oklab,
-    oklch(0.958 0.01 88),
-    oklch(0.957 0.005 120) 50%,
-    oklch(0.95 0.017 238)
+    130% 120% at 50% -20% in oklab,
+    oklch(0.975 0.006 95),
+    oklch(0.958 0.012 230) 45%,
+    oklch(0.945 0.02 240)
   );
-  --sky-sunset: radial-gradient(
-    140% 110% at 50% 115% in oklab,
-    oklch(0.948 0.03 62),
-    oklch(0.955 0.009 82) 50%,
-    oklch(0.952 0.011 245)
+  --sky-dusk: radial-gradient(
+    150% 115% at 50% 118% in oklab,
+    oklch(0.94 0.032 40),
+    oklch(0.945 0.018 330) 38%,
+    oklch(0.935 0.026 280)
   );
   isolation: isolate;
   background-image: var(--sky-midday);
-  transition: --sky-time 1.8s cubic-bezier(0.45, 0, 0.55, 1);
+  transition: --sky-time 1.2s cubic-bezier(0.37, 0, 0.63, 1);
 }
 
 .dark .feature-glow {
   --sky-dawn: radial-gradient(
     140% 110% at 50% 115% in oklab,
-    oklch(0.222 0.028 72),
-    oklch(0.205 0.012 90) 50%,
-    oklch(0.205 0.024 262)
+    oklch(0.231 0.051 65),
+    oklch(0.213 0.019 85) 50%,
+    oklch(0.211 0.032 255)
   );
   --sky-midday: radial-gradient(
-    140% 110% at 50% 115% in oklab,
-    oklch(0.215 0.014 85),
-    oklch(0.207 0.008 140) 50%,
-    oklch(0.21 0.026 240)
+    130% 120% at 50% -20% in oklab,
+    oklch(0.246 0.032 235),
+    oklch(0.216 0.029 245) 45%,
+    oklch(0.201 0.019 250)
   );
-  --sky-sunset: radial-gradient(
-    140% 110% at 50% 115% in oklab,
-    oklch(0.235 0.042 55),
-    oklch(0.207 0.013 70) 50%,
-    oklch(0.205 0.02 252)
+  --sky-dusk: radial-gradient(
+    150% 115% at 50% 118% in oklab,
+    oklch(0.231 0.064 40),
+    oklch(0.206 0.048 310) 38%,
+    oklch(0.181 0.056 275)
   );
 }
 
@@ -631,7 +631,7 @@ html[data-tile-open] [aria-label='Site'] {
 }
 
 .feature-glow::after {
-  background-image: var(--sky-sunset);
+  background-image: var(--sky-dusk);
   opacity: max(0, var(--sky-time) - 1);
 }
 
