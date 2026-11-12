@@ -20,7 +20,7 @@ const mono = localFont({
 export const metadata: Metadata = {
   title: 'Clerk UI',
   description:
-    'Sign-in, profiles, consent and agent experiences. Composable components made to be rearranged, restyled and replaced.',
+    'Sign-in, profiles, consent, and agent experiences. Composable components you can rearrange, restyle, and replace.',
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

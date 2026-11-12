@@ -6,9 +6,9 @@ import { HomeHeader } from '@/components/marketing/home-header';
 import { OverviewSections } from '@/components/marketing/overview';
 import { SiteFooter } from '@/components/marketing/site-footer';
 export const metadata: Metadata = {
-  title: 'Clerk UI Components',
+  title: 'Clerk UI · Production-ready components built for agents',
   description:
-    'Sign-in, profiles, consent and agent experiences. Composable components made to be rearranged, restyled and replaced.',
+    'Sign-in, profiles, consent, and agent experiences. Composable components you can rearrange, restyle, and replace.',
 };
 export default function Page() {
   return (
