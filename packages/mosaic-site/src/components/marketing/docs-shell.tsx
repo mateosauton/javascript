@@ -474,7 +474,7 @@ function HoverPreview({
 }
 export function DocsShell({ children }: { title?: string; children: React.ReactNode }) {
   const pathname = usePathname();
-  const home = pathname === '/';
+  const home = pathname === '/' || pathname === '/scene-lab';
   const [mobileOpen, setMobileOpen] = React.useState(false);
   React.useEffect(() => {
     const frame = requestAnimationFrame(() => {

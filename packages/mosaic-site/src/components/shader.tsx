@@ -4,7 +4,7 @@ import { useAnimationFrame } from 'motion/react';
 import type * as React from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
-const vertexShaderSource = `#version 300 es
+export const vertexShaderSource = `#version 300 es
 precision mediump float;
 in vec2 coordinates;
 
@@ -117,6 +117,8 @@ function loadImageAndCreateTextureInfo(
 
       gl.activeTexture(gl[`TEXTURE${number}`]);
       gl.bindTexture(gl.TEXTURE_2D, textureInfo.texture);
+      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
       resolve(textureInfo);

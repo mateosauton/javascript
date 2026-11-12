@@ -7,7 +7,14 @@ import { type CSSProperties, type RefObject, useEffect, useId, useReducer, useRe
 import { useFocusVisible } from 'react-aria';
 import { Button } from 'react-aria-components';
 
-import { GLASS_EDGES, GLASS_SCHEME, glassStyle, type GlassTone, trimToCapHeight } from '@/components/glass';
+import {
+  GLASS_EDGES,
+  GLASS_PRISM,
+  GLASS_SCHEME,
+  glassStyle,
+  type GlassTone,
+  trimToCapHeight,
+} from '@/components/glass';
 
 import { AGENT_BRAND, BUBBLE_SHADOW_SM, CLUSTER_WIDE } from './agent-brand';
 import { CopyCheckIcon } from './copy-check-icon';
@@ -258,6 +265,10 @@ export function PromptBar({
               <span
                 aria-hidden
                 className='bg-(--glass-fill) absolute inset-0 -z-20 rounded-[inherit] backdrop-blur-md [box-shadow:var(--glass-shadow)]'
+              />
+              <span
+                aria-hidden
+                className={GLASS_PRISM}
               />
 
               <span

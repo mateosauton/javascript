@@ -1,35 +1,9 @@
-'use client';
-
-import { useLayoutEffect, useRef } from 'react';
-
 import { FeatureTabs } from '@/components/marketing/feature-tabs';
 import { Container } from '@/components/ui/container';
 
-const HERO_GAP = 112;
-
 export function OverviewSections() {
-  const ref = useRef<HTMLElement>(null);
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-    const heroEnd = document.querySelector('[data-hero-end]');
-    if (!element || !heroEnd) {
-      return;
-    }
-    const update = () => {
-      element.style.marginTop = '0px';
-      const gap = element.getBoundingClientRect().top - heroEnd.getBoundingClientRect().bottom;
-      element.style.marginTop = `${HERO_GAP - gap}px`;
-    };
-    update();
-    void document.fonts.ready.then(update);
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
   return (
     <section
-      ref={ref}
       aria-labelledby='overview-principles-heading'
       className='relative z-10'
     >

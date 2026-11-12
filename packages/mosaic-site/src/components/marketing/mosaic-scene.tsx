@@ -3,6 +3,17 @@ import { useMotionValue, useSpring } from 'motion/react';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 
+import { bakeScene } from '@/components/marketing/mosaic-bake';
+import {
+  BAKE_EDGE_MAX,
+  FALLBACK_PALETTE,
+  type Focus,
+  type Palette,
+  readPalette,
+  type Rgb,
+  type TextBox,
+  useSceneLayout,
+} from '@/components/marketing/mosaic-shared';
 import {
   startTrail,
   stepTrail,
@@ -53,6 +64,7 @@ uniform float u_bevel_width;
 uniform float u_bevel_shape;
 uniform float u_bevel_height;
 uniform int u_view;
+uniform int u_bake;
 uniform float u_clay_tilt;
 uniform float u_clay_thickness;
 uniform float u_clay_wobble;
@@ -145,6 +157,7 @@ uniform float u_fine_chance;
 
 ${TRAIL_GLSL}
 const float TAU = 6.28318530718;
+const float BAKE_EDGE_MAX = ${BAKE_EDGE_MAX}.0;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
 float hash1(vec2 p) {
@@ -414,10 +427,13 @@ vec3 voronoiPlain(vec2 x, float size, float jitter, vec2 shift, bool skipBand, o
   return edge;
 }
 
-vec3 tileTone(vec2 id, vec2 anchor, vec3 low, vec3 high) {
+float tileToneT(vec2 id, vec2 anchor) {
   float flow = valueNoise(anchor / u_flow_scale + 91.0);
-  float t = mix(0.5, flow, u_flow) + (hash1(id + 13.0) - 0.5) * u_tone;
-  return mix(low, high, clamp(t, 0.0, 1.0));
+  return clamp(mix(0.5, flow, u_flow) + (hash1(id + 13.0) - 0.5) * u_tone, 0.0, 1.0);
+}
+
+vec3 tileTone(vec2 id, vec2 anchor, vec3 low, vec3 high) {
+  return mix(low, high, tileToneT(id, anchor));
 }
 
 vec3 roundedEdge(vec3 along, vec3 across) {
@@ -437,8 +453,12 @@ float brickBoundary(float i, float ring, float count) {
 float vignetteAt(vec2 screen) {
   vec2 fromCenter = (screen - logoCenter()) / (u_logo_size * u_zoom * vec2(max(u_vig_width, 0.01), max(u_vig_height, 0.01)));
   float vignette = 1.0 - smoothstep(1.0 - clamp(u_vig_soft, 0.0, 1.0), 1.0, length(fromCenter));
-  vignette *= smoothstep(0.0, max(u_vig_top, 1.0), screen.y);
-  vignette *= smoothstep(0.0, max(u_vig_bottom, 1.0), u_resolution.y - screen.y);
+  if (u_vig_top > 0.0) {
+    vignette *= smoothstep(0.0, u_vig_top, screen.y);
+  }
+  if (u_vig_bottom > 0.0) {
+    vignette *= smoothstep(0.0, u_vig_bottom, u_resolution.y - screen.y);
+  }
   return vignette;
 }
 
@@ -707,6 +727,14 @@ void main() {
     backAlpha = shadow + backAlpha * (1.0 - shadow);
   }
   outColor = vec4(faded * alpha + back * (1.0 - alpha), alpha + backAlpha * (1.0 - alpha));
+  float covered = step(0.0001, alpha);
+  if (u_bake == 1) {
+    outColor = vec4(1.0, 1.0, 1.0, alpha);
+  } else if (u_bake == 2) {
+    float edgeDistance = clamp((e.x - groutHalf) / BAKE_EDGE_MAX, 0.0, 1.0);
+    float packedTone = (floor(tileToneT(tileId, anchor) * 110.0 + 0.5) + step(0.5, logoAmount) * 145.0) / 255.0;
+    outColor = mix(vec4(0.5, 0.5, 0.0, 1.0), vec4(surface.xy * 0.5 + 0.5, packedTone, 0.5 + 0.5 * edgeDistance), covered);
+  }
 }
 `;
 
@@ -1076,71 +1104,6 @@ const SLIDERS: Slider[] = [
   { key: 'seed', min: 0, max: 100, step: 1 },
 ];
 
-type Focus = { x: number; y: number };
-type TextBox = [number, number, number, number];
-
-type Rgb = [number, number, number];
-type Palette = { tileLow: Rgb; tileHigh: Rgb; logoLow: Rgb; logoHigh: Rgb; logoTint: Rgb; page: Rgb };
-
-const PALETTE_TOKENS: Record<Mode, Record<keyof Palette, [string, string]>> = {
-  light: {
-    tileLow: ['--color-gray-100', '#efeeed'],
-    tileHigh: ['--color-gray-150', '#e4e3e1'],
-    logoLow: ['--color-gray-100', '#efeeed'],
-    logoHigh: ['--color-gray-150', '#e4e3e1'],
-    logoTint: ['--color-purple-400', '#9c83fd'],
-    page: ['--background', '#f7f7f6'],
-  },
-  dark: {
-    tileLow: ['--color-gray-800', '#24211f'],
-    tileHigh: ['--color-gray-750', '#2d2926'],
-    logoLow: ['--color-gray-600', '#595450'],
-    logoHigh: ['--color-gray-500', '#76726e'],
-    logoTint: ['--color-purple-400', '#9c83fd'],
-    page: ['--background', '#181613'],
-  },
-};
-
-function readColor(context: CanvasRenderingContext2D, [token, fallback]: [string, string]): Rgb {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  context.clearRect(0, 0, 1, 1);
-  context.fillStyle = value || fallback;
-  context.fillRect(0, 0, 1, 1);
-  const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
-  return [r / 255, g / 255, b / 255];
-}
-
-function readPalette(mode: Mode): Palette | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) {
-    return null;
-  }
-  const tokens = PALETTE_TOKENS[mode];
-  return {
-    tileLow: readColor(context, tokens.tileLow),
-    tileHigh: readColor(context, tokens.tileHigh),
-    logoLow: readColor(context, tokens.logoLow),
-    logoHigh: readColor(context, tokens.logoHigh),
-    logoTint: readColor(context, tokens.logoTint),
-    page: readColor(context, tokens.page),
-  };
-}
-
-const FALLBACK_PALETTE: Palette = {
-  tileLow: [0.937, 0.933, 0.929],
-  tileHigh: [0.894, 0.89, 0.882],
-  logoLow: [0.937, 0.933, 0.929],
-  logoHigh: [0.894, 0.89, 0.882],
-  logoTint: [0.612, 0.514, 0.992],
-  page: [0.969, 0.969, 0.965],
-};
-
 function normalizeTint([r, g, b]: Rgb): Rgb {
   const luma = Math.max(0.2126 * r + 0.7152 * g + 0.0722 * b, 0.001);
   return [r / luma, g / luma, b / luma];
@@ -1215,6 +1178,7 @@ function buildUniforms(settings: Settings, focus: Focus, palette: Palette, mode:
     u_bevel_shape: { type: 'uniform1f', value: settings.bevelShape },
     u_bevel_height: { type: 'uniform1f', value: settings.bevelHeight },
     u_view: { type: 'uniform1i', value: settings.view },
+    u_bake: { type: 'uniform1i', value: 0 },
     u_clay_tilt: { type: 'uniform1f', value: settings.clayTilt },
     u_clay_thickness: { type: 'uniform1f', value: settings.clayThickness },
     u_clay_wobble: { type: 'uniform1f', value: settings.clayWobble },
@@ -1347,7 +1311,17 @@ function PanelSection({
   );
 }
 
-function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Settings) => void }) {
+function Panel({
+  settings,
+  onChange,
+  onBake,
+  bakeStatus,
+}: {
+  settings: Settings;
+  onChange: (next: Settings) => void;
+  onBake: () => void;
+  bakeStatus: string;
+}) {
   const [copied, setCopied] = React.useState(false);
   const patternSliders = SLIDERS.filter(({ key }) => settings.hug === 0 || (key !== 'threshold' && key !== 'cut'));
   const sliders = (list: Slider[]) =>
@@ -1410,60 +1384,16 @@ function Panel({ settings, onChange }: { settings: Settings; onChange: (next: Se
           Reset
         </button>
       </div>
+      <button
+        type='button'
+        className='rounded bg-neutral-900 py-1.5 font-medium text-white dark:bg-white dark:text-neutral-900'
+        onClick={onBake}
+      >
+        Bake
+      </button>
+      {bakeStatus ? <p className='text-[11px] leading-4 text-neutral-500'>{bakeStatus}</p> : null}
     </div>
   );
-}
-
-const BELOW_HEADLINE = 160;
-
-function useSceneLayout(ref: React.RefObject<HTMLDivElement | null>) {
-  const [height, setHeight] = React.useState<number | null>(null);
-  const [focus, setFocus] = React.useState<Focus>({ x: 0, y: 0 });
-  const [textBox, setTextBox] = React.useState<TextBox>([0, 0, 0, 0]);
-  React.useEffect(() => {
-    const scene = ref.current;
-    const section = scene?.parentElement;
-    const headline = section?.querySelector('h1');
-    const focusBox = section?.querySelector<HTMLElement>('[data-mosaic-focus]');
-    if (!scene || !section || !headline) {
-      return;
-    }
-    const measure = () => {
-      setHeight(headline.offsetTop + headline.offsetHeight - scene.offsetTop + BELOW_HEADLINE);
-      const sceneRect = scene.getBoundingClientRect();
-      if (focusBox) {
-        const box = focusBox.getBoundingClientRect();
-        setFocus({ x: box.left + box.width / 2 - sceneRect.left, y: box.top + box.height / 2 - sceneRect.top });
-      } else {
-        setFocus({ x: sceneRect.width / 2, y: sceneRect.height / 3 });
-      }
-      const parts = [
-        section.querySelector('[data-hero-eyebrow]'),
-        headline,
-        headline.nextElementSibling,
-        section.querySelector('[data-hero-end]')?.firstElementChild,
-      ].filter((part): part is Element => part instanceof Element);
-      const rects = parts.map(part => {
-        const range = document.createRange();
-        range.selectNodeContents(part);
-        const tight = range.getBoundingClientRect();
-        return tight.width > 0 ? tight : part.getBoundingClientRect();
-      });
-      if (rects.length > 0) {
-        setTextBox([
-          Math.min(...rects.map(rect => rect.left)) - sceneRect.left,
-          Math.min(...rects.map(rect => rect.top)) - sceneRect.top,
-          Math.max(...rects.map(rect => rect.right)) - sceneRect.left,
-          Math.max(...rects.map(rect => rect.bottom)) - sceneRect.top,
-        ]);
-      }
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(section);
-    observer.observe(headline);
-    return () => observer.disconnect();
-  }, [ref]);
-  return { height, focus, textBox };
 }
 
 function useLightSpring(ref: React.RefObject<HTMLDivElement | null>, enabled: boolean) {
@@ -1514,6 +1444,20 @@ export function MosaicScene() {
     [spring, lightX, follow],
   );
   const { sheen } = settings;
+  const [bakeStatus, setBakeStatus] = React.useState('');
+  const bake = React.useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) {
+      return;
+    }
+    setBakeStatus('Baking…');
+    bakeScene({ source, uniforms, width: scene.offsetWidth, height: scene.offsetHeight, focus, settings })
+      .then(({ meta, written }) => {
+        const files = written.map(entry => `${entry.file.split('/').pop()} ${Math.round(entry.bytes / 1024)} KB`);
+        setBakeStatus(`Baked ${meta.width}×${meta.height}: ${files.join(', ')}`);
+      })
+      .catch((error: unknown) => setBakeStatus(error instanceof Error ? error.message : 'Bake failed'));
+  }, [uniforms, focus, settings]);
   const shouldRender = React.useCallback(
     () =>
       POINTER_EFFECTS && ((sheen > 0 && TRAIL_ENERGY_UNIFORM.value > 0.001) || (follow > 0 && spring.isAnimating())),
@@ -1541,6 +1485,8 @@ export function MosaicScene() {
             <Panel
               settings={settings}
               onChange={setSettings}
+              onBake={bake}
+              bakeStatus={bakeStatus}
             />,
             document.body,
           )

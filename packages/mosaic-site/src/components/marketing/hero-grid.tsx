@@ -191,23 +191,28 @@ export function HeroGrid() {
     <div
       ref={ref}
       aria-hidden='true'
-      className='pointer-events-none absolute inset-0 -z-20'
-      style={{
-        maskImage: look.mask,
-        WebkitMaskImage: look.mask,
-        maskComposite: 'intersect',
-        WebkitMaskComposite: 'source-in',
-      }}
+      className='pointer-events-none absolute inset-0 -z-20 [-webkit-mask-image:var(--grid-mask-light)] [mask-image:var(--grid-mask-light)] dark:[-webkit-mask-image:var(--grid-mask-dark)] dark:[mask-image:var(--grid-mask-dark)]'
+      style={
+        {
+          '--grid-mask-light': LOOKS.light.mask,
+          '--grid-mask-dark': LOOKS.dark.mask,
+          maskComposite: 'intersect',
+          WebkitMaskComposite: 'source-in',
+        } as React.CSSProperties
+      }
     >
       <div
-        className='absolute'
-        style={{
-          left: `calc(50% - ${SPAN / 2}px)`,
-          width: SPAN,
-          top: (top ?? 0) - SPAN / 2,
-          height: SPAN,
-          backgroundImage: background(look),
-        }}
+        className='absolute [background-image:var(--grid-bg-light)] dark:[background-image:var(--grid-bg-dark)]'
+        style={
+          {
+            left: `calc(50% - ${SPAN / 2}px)`,
+            width: SPAN,
+            top: (top ?? 0) - SPAN / 2,
+            height: SPAN,
+            '--grid-bg-light': background(LOOKS.light),
+            '--grid-bg-dark': background(LOOKS.dark),
+          } as React.CSSProperties
+        }
       />
       <canvas
         ref={canvasRef}

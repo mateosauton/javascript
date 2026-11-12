@@ -7,6 +7,7 @@ import { useMode } from '@/components/use-mode';
 
 import { ElevationTuner } from './elevation-tuner';
 import { GrayTuner } from './gray-tuner';
+import { YellowLab } from './yellow-lab';
 
 const SCALES: { name: string; tokens: string[] }[] = [
   {
@@ -827,6 +828,7 @@ export function PaletteLab() {
         </div>
       </header>
 
+      <YellowLab />
       <GrayTuner />
       <ElevationTuner />
       <Roles values={values} />
