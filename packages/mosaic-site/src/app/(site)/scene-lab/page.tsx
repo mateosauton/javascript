@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { HeroQuilt } from '@/components/marketing/hero-quilt';
 import { MosaicScene } from '@/components/marketing/mosaic-scene';
 
-export const metadata: Metadata = { title: 'Scene lab — Mosaic' };
+export const metadata: Metadata = { title: 'Scene lab · Clerk UI' };
 
 export default function Page() {
   if (process.env.NODE_ENV !== 'development') {

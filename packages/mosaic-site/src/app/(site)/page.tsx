@@ -6,7 +6,7 @@ import { HomeHeader } from '@/components/marketing/home-header';
 import { OverviewSections } from '@/components/marketing/overview';
 import { SiteFooter } from '@/components/marketing/site-footer';
 export const metadata: Metadata = {
-  title: 'Clerk UI — Mosaic',
+  title: 'Clerk UI Components',
   description:
     'Sign-in, profiles, consent and agent experiences. Composable components made to be rearranged, restyled and replaced.',
 };
