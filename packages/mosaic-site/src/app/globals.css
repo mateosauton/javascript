@@ -566,8 +566,8 @@ html[data-tile-open] [aria-label='Site'] {
 .dark .feature-glow {
   background-image: radial-gradient(
     140% 110% at 50% 115% in oklab,
-    oklch(0.222 0.026 55),
-    oklch(0.204 0.008 72) 50%,
-    oklch(0.198 0.011 250)
+    oklch(0.235 0.042 55),
+    oklch(0.207 0.013 70) 50%,
+    oklch(0.205 0.02 252)
   );
 }
