@@ -8,9 +8,22 @@ const componentEntries = (await readdir(resolve(distDir, 'components')))
   .filter(file => file.endsWith('.js'))
   .map(file => `components/${file}`);
 
-for (const entryFile of ['index.js', ...componentEntries]) {
+const isClientModule = source => source.startsWith("'use client';") || source.startsWith('"use client";');
+const namespaceEntries = { 'components/avatar.js': 'components/avatar/avatar.js' };
+
+for (const [entryFile, leafFile] of Object.entries(namespaceEntries)) {
   const entry = await readFile(resolve(distDir, entryFile), 'utf8');
-  if (!entry.startsWith("'use client';") && !entry.startsWith('"use client";')) {
+  const leaf = await readFile(resolve(distDir, leafFile), 'utf8');
+  if (isClientModule(entry) || !isClientModule(leaf)) {
+    throw new Error(
+      `Namespace entry ${entryFile} must have no directive, and its leaf ${leafFile} must be 'use client'.`,
+    );
+  }
+}
+
+for (const entryFile of ['index.js', ...componentEntries].filter(file => !(file in namespaceEntries))) {
+  const entry = await readFile(resolve(distDir, entryFile), 'utf8');
+  if (!isClientModule(entry)) {
     throw new Error(`Published Mosaic JS entry ${entryFile} is missing a top-level 'use client' boundary.`);
   }
 }
