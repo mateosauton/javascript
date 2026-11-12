@@ -1,4 +1,5 @@
 'use client';
+import { useMotionValue, useSpring } from 'motion/react';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 
@@ -11,6 +12,15 @@ import {
   readPalette,
   useSceneLayout,
 } from '@/components/marketing/mosaic-shared';
+import {
+  startTrail,
+  stepTrail,
+  TRAIL_ENERGY_UNIFORM,
+  TRAIL_GLSL,
+  TRAIL_ORIGIN_UNIFORM,
+  TRAIL_POINTS,
+  TRAIL_POINTS_UNIFORM,
+} from '@/components/marketing/pointer-trail';
 import { Shader, type Uniforms } from '@/components/shader';
 import { type Mode, useMode } from '@/components/use-mode';
 
@@ -239,6 +249,15 @@ uniform float u_wave_y;
 uniform float u_rings;
 uniform float u_grow;
 uniform float u_gap_glow;
+uniform float u_time;
+uniform float u_sheen;
+uniform float u_sheen_scale;
+uniform float u_sheen_angle;
+uniform float u_sheen_warp;
+uniform float u_sheen_glint;
+uniform float u_sheen_base;
+uniform float u_sheen_edge;
+${TRAIL_GLSL}
 uniform float u_film_light;
 uniform float u_wave_width;
 uniform float u_wave_amp;
@@ -252,6 +271,18 @@ const vec3 VIOLET = vec3(0.66, 0.6, 1.0);
 const vec3 CYAN = vec3(0.6, 0.88, 1.0);
 const float EDGE_MAX = ${BAKE_EDGE_MAX}.0;
 const float BAKE_BLUR = ${BAKE_BLUR}.0;
+
+vec2 trailLight(vec2 point) {
+  vec2 sum = vec2(0.0);
+  float total = 0.0;
+  float wobble = trailWobble(point);
+  for (int i = 0; i < ${TRAIL_POINTS}; i++) {
+    float weight = trailWeight(point, i, wobble);
+    sum += (u_trail[i].xy - u_trail_origin.xy) * weight;
+    total += weight;
+  }
+  return total > 0.0 ? sum / total : point;
+}
 
 float hash1(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -331,6 +362,20 @@ void main() {
     vec3 reflected = reflect(-toEye, surface);
     float sky = mix(1.0 - u_rim, 1.0, smoothstep(0.0, 0.6, -reflected.y));
     color = albedo * shade + vec3(glint + fresnel * sky);
+
+    float sheenReveal = u_sheen > 0.0 ? trailReveal(at) : 0.0;
+    if (sheenReveal > 0.0) {
+      vec2 sheenUv = (at + surface.xy * u_sheen_warp) / max(u_sheen_scale, 1.0);
+      vec2 sheenDrift = vec2(valueNoise(sheenUv * 0.7 + u_time * 0.04), valueNoise(sheenUv * 0.7 + 5.2 - u_time * 0.03));
+      float sheenHue = valueNoise(sheenUv * 1.1 + sheenDrift * 1.5 + u_time * 0.03) * 2.4 + dot(sheenUv, vec2(0.4, 0.3)) + sheenReveal * 0.25 + dot(surface.xy, vec2(0.6, 0.4)) * u_sheen_angle;
+      vec3 sheenFilm = 0.5 + 0.5 * cos(TAU * (sheenHue + vec3(0.0, 0.33, 0.67)));
+      sheenFilm = mix(sheenFilm, vec3(dot(sheenFilm, vec3(0.333))), 0.2);
+      vec3 toTrail = normalize(vec3(trailLight(at) - at, 159.0));
+      float trailGlint = pow(max(dot(surface, normalize(toTrail + vec3(0.0, 0.0, 1.0))), 0.0), 88.0);
+      float sheenBand = (1.0 - thick) * (1.0 - thick);
+      float sheenAmount = sheenReveal * u_sheen * (u_sheen_base + u_sheen_edge * sheenBand + 0.24 * trailGlint);
+      color += sheenFilm * sheenAmount + vec3(trailGlint * sheenReveal * u_sheen_glint);
+    }
 
     if (u_prism > 0.0) {
       float across = clamp(edge / max(u_prism_width, 0.5), 0.0, 1.0);
@@ -457,6 +502,16 @@ function buildUniforms(
     u_rings: f(reveal.rings),
     u_grow: f(reveal.grow),
     u_gap_glow: f(reveal.gapGlow),
+    u_sheen: f(s.sheen),
+    u_sheen_scale: f(s.sheenScale),
+    u_sheen_angle: f(s.sheenAngle),
+    u_sheen_warp: f(s.sheenWarp),
+    u_sheen_glint: f(s.sheenGlint),
+    u_sheen_base: f(s.sheenBase),
+    u_sheen_edge: f(s.sheenEdge),
+    u_trail: TRAIL_POINTS_UNIFORM,
+    u_trail_origin: TRAIL_ORIGIN_UNIFORM,
+    u_trail_energy: TRAIL_ENERGY_UNIFORM,
     u_wave_width: f(reveal.width),
     u_wave_amp: f(reveal.amp),
     u_wave_film: f(reveal.film * (light ? 1 : 0.45)),
@@ -569,6 +624,41 @@ function RevealPanel({ reveal, onChange }: { reveal: Reveal; onChange: (next: Re
   );
 }
 
+function usePointerEffects(enabled: boolean) {
+  const [active, setActive] = React.useState(false);
+  React.useEffect(() => {
+    const fine = window.matchMedia('(pointer: fine)');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setActive(enabled && fine.matches && !reduced.matches);
+    update();
+    fine.addEventListener('change', update);
+    reduced.addEventListener('change', update);
+    return () => {
+      fine.removeEventListener('change', update);
+      reduced.removeEventListener('change', update);
+    };
+  }, [enabled]);
+  return active;
+}
+
+function useLightSpring(ref: React.RefObject<HTMLDivElement | null>, enabled: boolean) {
+  const pointer = useMotionValue(0.5);
+  const spring = useSpring(pointer, { stiffness: 260, damping: 28, mass: 0.6 });
+  React.useEffect(() => {
+    const scene = ref.current;
+    if (!scene || !enabled) {
+      return;
+    }
+    const onMove = (event: PointerEvent) => {
+      const rect = scene.getBoundingClientRect();
+      pointer.set(Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)));
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [ref, enabled, pointer]);
+  return spring;
+}
+
 export function BakedMosaic() {
   const sceneRef = React.useRef<HTMLDivElement>(null);
   const { height, focus, width } = useSceneLayout(sceneRef);
@@ -600,6 +690,11 @@ export function BakedMosaic() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [palette, mode, origin[0], origin[1], center[0], center[1], width, reveal],
   );
+  const pointerEffects = usePointerEffects(true);
+  const canvasRef = React.useRef<HTMLDivElement>(null);
+  const lightX = settings.lightX;
+  const follow = settings.follow;
+  const spring = useLightSpring(sceneRef, pointerEffects && follow > 0);
   const startRef = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (!isReady) {
@@ -614,13 +709,27 @@ export function BakedMosaic() {
       u_reveal: { type: 'uniform1f', value: revealTime(startRef.current, reveal) },
       u_front: { type: 'uniform1f', value: revealFront(revealTime(startRef.current, reveal), reveal) },
       u_skeleton_color: { type: 'uniform3f', value: skeletonColorRef.current },
+      u_light_x: { type: 'uniform1f', value: lightX + (spring.get() - lightX) * follow },
     }),
-    [reveal],
+    [reveal, spring, lightX, follow],
   );
   const shouldRender = React.useCallback(() => {
     const start = startRef.current;
-    return !reveal.scrub && start !== null && start !== -Infinity && performance.now() - start < reveal.duration + 100;
-  }, [reveal]);
+    const revealing =
+      !reveal.scrub && start !== null && start !== -Infinity && performance.now() - start < reveal.duration + 100;
+    return (
+      revealing ||
+      (pointerEffects && TRAIL_ENERGY_UNIFORM.value > 0.001) ||
+      (pointerEffects && follow > 0 && spring.isAnimating())
+    );
+  }, [reveal, pointerEffects, follow, spring]);
+  React.useEffect(() => (pointerEffects ? startTrail() : undefined), [pointerEffects]);
+  const onRender = React.useCallback(() => {
+    markReady();
+    if (pointerEffects) {
+      stepTrail(canvasRef.current);
+    }
+  }, [pointerEffects]);
   return (
     <div
       ref={sceneRef}
@@ -630,6 +739,7 @@ export function BakedMosaic() {
     >
       {height ? (
         <div
+          ref={canvasRef}
           className='absolute'
           style={{ left: origin[0], top: origin[1], width: bake.width, height: bake.height }}
         >
@@ -639,7 +749,7 @@ export function BakedMosaic() {
             textures={TEXTURES}
             liveUniforms={liveUniforms}
             shouldRender={shouldRender}
-            onRender={markReady}
+            onRender={onRender}
             premultiplied
           />
         </div>

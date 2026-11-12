@@ -10,7 +10,7 @@ const SPAN = 64 * MAJOR;
 
 type GridLook = { color: string; major: number; minor: number; mask: string; trail: string; trailAlpha: number };
 
-const TRAIL_ENABLED = false;
+const TRAIL_ENABLED = true;
 const TRAIL_LIFE = 260;
 const EYEBROW_PAD = 8;
 
